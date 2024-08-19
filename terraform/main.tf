@@ -5,16 +5,23 @@ provider "aws" {
 # S3 Bucket
 resource "aws_s3_bucket" "payroll_raw_data_bucket" {
   bucket = var.s3_bucket_name
+}
 
-  versioning {
-    enabled = true
+# Versioning configuration for the S3 Bucket
+resource "aws_s3_bucket_versioning" "payroll_raw_data_bucket_versioning" {
+  bucket = aws_s3_bucket.payroll_raw_data_bucket.id
+
+  versioning_configuration {
+    status = "Enabled"
   }
+}
 
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
+resource "aws_s3_bucket_server_side_encryption_configuration" "example" {
+  bucket = aws_s3_bucket.payroll_raw_data_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
     }
   }
 }
@@ -39,7 +46,7 @@ resource "aws_iam_role" "redshift_s3_access_role" {
 
 resource "aws_iam_policy" "redshift_s3_access_policy" {
   name        = "RedshiftS3AccessPolicy"
-  description = "Policy for Redshift cluster to access S3 bucket"
+  description = "Policy for Redshift serverless to access S3 bucket"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -52,8 +59,8 @@ resource "aws_iam_policy" "redshift_s3_access_policy" {
         ]
         Effect   = "Allow"
         Resource = [
-          aws_s3_bucket.raw_data_bucket.arn,
-          "${aws_s3_bucket.raw_data_bucket.arn}/*"
+          aws_s3_bucket.payroll_raw_data_bucket.arn,
+          "${aws_s3_bucket.payroll_raw_data_bucket.arn}/*"
         ]
       }
     ]
@@ -63,6 +70,29 @@ resource "aws_iam_policy" "redshift_s3_access_policy" {
 resource "aws_iam_role_policy_attachment" "attach_redshift_s3_access" {
   role       = aws_iam_role.redshift_s3_access_role.name
   policy_arn = aws_iam_policy.redshift_s3_access_policy.arn
+}
+
+
+# Subnet definitions
+resource "aws_subnet" "subnet_1" {
+  vpc_id            = var.vpc_id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "eu-west-2a"  # Corrected availability zone
+  map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "subnet_2" {
+  vpc_id            = var.vpc_id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "eu-west-2b"  # Corrected availability zone
+  map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "subnet_3" {
+  vpc_id            = var.vpc_id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = "eu-west-2c"  # Corrected availability zone
+  map_public_ip_on_launch = true
 }
 
 # Security Group for Redshift
@@ -85,36 +115,26 @@ resource "aws_security_group" "redshift_sg" {
   }
 }
 
-# Redshift Cluster
-resource "aws_redshift_cluster" "redshift_cluster" {
-  cluster_identifier      = var.redshift_cluster_id
-  node_type               = var.redshift_node_type
-  number_of_nodes         = var.redshift_number_of_nodes
-  master_username         = var.redshift_master_username
-  master_password         = var.redshift_master_password
-  database_name           = var.redshift_database_name
-  iam_roles               = [aws_iam_role.redshift_s3_access_role.arn]
-  skip_final_snapshot     = true
-  publicly_accessible     = false
-  vpc_security_group_ids  = [aws_security_group.redshift_sg.id]
+# Redshift Serverless Namespace
+resource "aws_redshiftserverless_namespace" "example" {
+  namespace_name      = var.redshift_namespace_name
+  admin_username      = var.redshift_master_username
+  admin_user_password = var.redshift_master_password
 }
 
-# Table Creation (local-exec)
-resource "null_resource" "create_redshift_tables" {
-  provisioner "local-exec" {
-    command = <<EOT
-      psql \
-        --host=${aws_redshift_cluster.redshift_cluster.endpoint} \
-        --port=5439 \
-        --username=${var.redshift_master_username} \
-        --dbname=${var.redshift_database_name} \
-        -f ${path.module}/../sql/create_datawarehouse.sql
-    EOT
+# Redshift Serverless Workgroup
+resource "aws_redshiftserverless_workgroup" "example" {
+  workgroup_name     = var.redshift_workgroup_name
+  namespace_name     = aws_redshiftserverless_namespace.example.namespace_name
+  base_capacity      = 32
+  security_group_ids = [aws_security_group.redshift_sg.id]
+  subnet_ids          = [
+    aws_subnet.subnet_1.id,
+    aws_subnet.subnet_2.id,
+    aws_subnet.subnet_3.id
+  ]
 
-    environment = {
-      PGPASSWORD = var.redshift_master_password
-    }
+  tags = {
+    payroll = "payroll-workgroup"
   }
-
-  depends_on = [aws_redshift_cluster.redshift_cluster]
 }
