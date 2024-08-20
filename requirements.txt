@@ -1,3 +1,11 @@
 pandas
 python-dotenv
 boto3
+sqlalchemy
+dbt-redshift
+dbt-core
+boto3
+apache-airflow==2.1.4
+smtplib
+psycopg2-binary
+sqlalchemy-redshift

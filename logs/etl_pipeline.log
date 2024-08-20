@@ -1,0 +1,26 @@
+2024-08-20 10:02:35,618 - root - INFO - Extracting EmpTittle.csv from S3
+2024-08-20 10:02:35,835 - root - ERROR - Failed to extract EmpTittle.csv: An error occurred (NoSuchKey) when calling the GetObject operation: The specified key does not exist.
+2024-08-20 10:03:40,702 - root - INFO - Extracting EmpMaster.csv from S3
+2024-08-20 10:06:41,532 - root - INFO - Extracting EmpMaster.csv from S3
+2024-08-20 11:00:39,791 - root - ERROR - Failed to create engine: Can't load plugin: sqlalchemy.dialects:redshift.psycopg2
+2024-08-20 11:41:46,500 - root - ERROR - Failed to create engine: Can't load plugin: sqlalchemy.dialects:redshift.psycopg2
+2024-08-20 11:47:41,446 - root - ERROR - Failed to create engine: Can't load plugin: sqlalchemy.dialects:redshift.psycopg2
+2024-08-20 11:50:31,447 - root - ERROR - Failed to create engine: (SQLAlchemy 2.0.32 (/Users/villy/PycharmProjects/Payroll-Data-Integration-Platform/.venv/lib/python3.9/site-packages), Requirement.parse('SQLAlchemy<2.0.0,>=0.9.2'), {'sqlalchemy-redshift'})
+2024-08-20 11:51:31,362 - root - ERROR - Failed to create engine: (SQLAlchemy 2.0.32 (/Users/villy/PycharmProjects/Payroll-Data-Integration-Platform/.venv/lib/python3.9/site-packages), Requirement.parse('SQLAlchemy<2.0.0,>=0.9.2'), {'sqlalchemy-redshift'})
+2024-08-20 11:54:44,960 - root - ERROR - Failed to create engine: (SQLAlchemy 2.0.32 (/Users/villy/PycharmProjects/Payroll-Data-Integration-Platform/.venv/lib/python3.9/site-packages), Requirement.parse('SQLAlchemy<2.0.0,>=0.9.2'), {'sqlalchemy-redshift'})
+2024-08-20 12:00:34,597 - root - ERROR - Failed to create engine: (SQLAlchemy 2.0.32 (/Users/villy/PycharmProjects/Payroll-Data-Integration-Platform/.venv/lib/python3.9/site-packages), Requirement.parse('SQLAlchemy<2.0.0,>=0.9.2'), {'sqlalchemy-redshift'})
+2024-08-20 12:15:32,938 - root - INFO - Extracting EmpMaster.csv from S3
+2024-08-20 12:15:47,239 - root - INFO - Successfully created Redshift engine.
+2024-08-20 12:16:42,454 - root - INFO - Successfully created Redshift engine.
+2024-08-20 12:23:30,482 - root - INFO - Successfully created Redshift engine.
+2024-08-20 13:03:09,682 - root - INFO - Successfully created Redshift engine.
+2024-08-20 13:03:50,413 - root - INFO - Successfully created Redshift engine.
+2024-08-20 13:03:50,482 - root - ERROR - Failed to stage data to staging_test: (psycopg2.OperationalError) could not translate host name "payroll-workgroup.637423632863.eu-west-2.redshift-serverless.amazonaws.com" to address: nodename nor servname provided, or not known
+
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+2024-08-20 13:12:18,213 - root - INFO - Successfully created Redshift engine.
+2024-08-20 13:12:34,582 - root - INFO - Successfully created Redshift engine.
+2024-08-20 13:13:00,494 - root - INFO - Successfully created Redshift engine.
+2024-08-20 13:13:00,548 - root - ERROR - Failed to stage data to staging_test: (psycopg2.OperationalError) could not translate host name "payroll-workgroup.637423632863.eu-west-2.redshift-serverless.amazonaws.com" to address: nodename nor servname provided, or not known
+
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
