@@ -1,0 +1,4 @@
+# Validate foreign keys before loading the fact table
+fact_payroll_df = fact_payroll_df[fact_payroll_df['EmployeeID'].isin(dim_employee_df['EmployeeID'])]
+fact_payroll_df = fact_payroll_df[fact_payroll_df['AgencyID'].isin(dim_agency_df['AgencyID'])]
+fact_payroll_df = fact_payroll_df[fact_payroll_df['TitleCode'].isin(dim_title_df['TitleCode'])]

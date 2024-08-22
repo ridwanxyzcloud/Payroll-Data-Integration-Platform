@@ -27,11 +27,30 @@ engine = create_db_engine(db_url)
 master_files = ['EmpMaster.csv', 'TitleMaster.csv', 'AgencyMaster.csv']
 payroll_files = ['nycpayroll_2020.csv', 'nycpayroll_2021.csv']
 master_table_names = ['DimEmployee', 'DimTitle', 'DimAgency']
+master_columns = [
+    ['EmployeeID', 'LastName', 'FirstName'],
+    ['TitleCode', 'TitleDescription'],
+    ['AgencyID', 'AgencyName']
+]
+
+transactional_columns = [
+    'FiscalYear', 'PayrollNumber', 'AgencyID', 'AgencyName', 'EmployeeID', 'LastName', 'FirstName',
+    'AgencyStartDate', 'WorkLocationBorough', 'TitleCode', 'TitleDescription', 'LeaveStatusasofJune30',
+    'BaseSalary', 'PayBasis', 'RegularHours', 'RegularGrossPaid', 'OTHours', 'TotalOTPaid', 'TotalOtherPay'
+]
+
 dim_columns = [
     ['EmployeeID', 'LastName', 'FirstName', 'LeaveStatusasofJune30'],
     ['TitleCode', 'TitleDescription'],
     ['AgencyID', 'AgencyName', 'AgencyStartDate']
 ]
+required_columns = [
+        'FiscalYear', 'PayrollNumber', 'AgencyID', 'EmployeeID', 'WorkLocationBorough',
+        'TitleCode', 'BaseSalary', 'PayBasis', 'RegularHours', 'RegularGrossPaid',
+        'OTHours', 'TotalOTPaid', 'TotalOtherPay'
+    ]
+
+
 
 # AWS and S3 configuration
 s3_bucket = os.getenv("s3_bucket")

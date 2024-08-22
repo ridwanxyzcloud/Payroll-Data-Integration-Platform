@@ -133,7 +133,7 @@ resource "aws_redshiftserverless_workgroup" "example" {
     aws_subnet.subnet_2.id,
     aws_subnet.subnet_3.id
   ]
-
+  publicly_accessible = true
   tags = {
     payroll = "payroll-workgroup"
   }

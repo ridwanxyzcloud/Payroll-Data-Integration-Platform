@@ -82,3 +82,23 @@ def transform_transactional_data(df, engine):
     df = pd.merge(df, dim_title[['TitleCode']], on='TitleCode', how='left')
 
     return df
+
+
+def map_to_dimension_keys(df):
+    # Map EmployeeID
+    dim_employee = pd.read_sql_table('DimEmployee', engine)
+    df = pd.merge(df, dim_employee[['EmployeeID']], on='EmployeeID', how='left')
+
+    # Map AgencyID
+    dim_agency = pd.read_sql_table('DimAgency', engine)
+    df = pd.merge(df, dim_agency[['AgencyID']], on='AgencyID', how='left')
+
+    # Map TitleCode
+    dim_title = pd.read_sql_table('DimTitle', engine)
+    df = pd.merge(df, dim_title[['TitleCode']], on='TitleCode', how='left')
+
+    return df
+
+
+payroll_2020 = map_to_dimension_keys(payroll_2020)
+payroll_2021 = map_to_dimension_keys(payroll_2021)

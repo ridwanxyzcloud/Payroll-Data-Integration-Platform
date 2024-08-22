@@ -44,4 +44,9 @@ STEPS
 NOTE: you have to give the right permission to the IAM role or user used so it allows connection to Redshift and the API which is 'redshift-data'
 NOTE: Using redshift-data API is a modern approach and safer and will not expose any of your credentials..
 9. Once that is done and verified, you can then head to creating the actual etl pipeline. 
-10. 
+
+NB: Make sure an internet Gateway is attached to the VPC used by the Redshift cluster. Otherwise the feature to turn public access of the redshift instance on will not work.
+NB: Update the route table and add the IGW route and select the desitnation as public `0.0.0.0/0`
+
+check the configurations are working : 
+` nc -vz payroll-workgroup.637423632863.eu-west-2.redshift-serverless.amazonaws.com 5439`

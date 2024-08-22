@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
 import pandas as pd
+from snowflake.sqlalchemy import URL as URL_sn
 import logging
 from dotenv import load_dotenv
 import os
@@ -44,34 +45,38 @@ def stage_data(engine, df, table_name):
         logging.error(f"Failed to stage data to {staging_table_name}: {str(e)}")
 
 
-def create_fact_table(engine, metadata):
-    if engine is None:
-        logging.error("Engine is not initialized.")
-        return
 
+def snowflake_engine():
+
+    '''
+    constructs a snowflake engine object for snowflake DB from .env file
+
+    parameter: None
+
+    Returns:
+     - snowflake-connector engine (sqlalchemy.Engine)
+    '''
+
+    # create engine for snowflake
     try:
-        fact_table = Table('FactPayroll', metadata,
-                           Column('payrollID', Integer, primary_key=True, autoincrement=True),
-                           Column('FiscalYear', Integer),
-                           Column('PayrollNumber', Integer),
-                           Column('EmployeeID', Integer),
-                           Column('AgencyID', Integer),
-                           Column('TitleCode', String),
-                           Column('WorkLocationBorough', String),
-                           Column('LeaveStatusasofJune30', String),
-                           Column('BaseSalary', Integer),
-                           Column('PayBasis', String),
-                           Column('RegularHours', Integer),
-                           Column('RegularGrossPaid', Integer),
-                           Column('OTHours', Integer),
-                           Column('TotalOTPaid', Integer),
-                           Column('TotalOtherPay', Integer))
+        # Create Snowflake URL
+        snowflake_url = URL_sn(
+            user=os.getenv('sn_user'),
+            password=os.getenv('sn_password'),
+            account=os.getenv('sn_account_identifier'),
+            database=os.getenv('sn_database'),
+            schema=os.getenv('sn_schema'),
+            warehouse=os.getenv('sn_warehouse'),
+            role=os.getenv('sn_role')
+        )
 
-        metadata.create_all(engine)
-        logging.info("FactPayroll table successfully created.")
+        # Create SQLAlchemy engine and return it
+        engine = create_engine(snowflake_url)
+        return engine
+
     except Exception as e:
-        logging.error(f"Failed to create FactPayroll table: {str(e)}")
-
+        print(f"Error creating Snowflake engine: {e}")
+        return None
 
 def read_table(engine, table_name):
     if engine is None:
