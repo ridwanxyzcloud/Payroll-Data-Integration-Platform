@@ -15,7 +15,11 @@ database = os.getenv('database')
 
 
 def redshift_engine():
+    """
+    Creates a SQLAlchemy engine for Redshift using credentials from environment variables.
 
+    :return: SQLAlchemy engine object if successful, otherwise None.
+    """
     if not all([username, password, host, port, database]):
         logging.error("Missing required environment variables for Redshift connection.")
         return None
@@ -32,6 +36,14 @@ def redshift_engine():
 
 
 def stage_data(engine, df, table_name):
+    """
+    Stages data to a Redshift table in the 'stg' schema.
+
+    :param engine: SQLAlchemy engine object connected to Redshift.
+    :param df: Pandas DataFrame containing the data to stage.
+    :param table_name: Name of the table to stage data to.
+    :return: None
+    """
     if engine is None:
         logging.error("Engine is not initialized.")
         return
@@ -45,6 +57,13 @@ def stage_data(engine, df, table_name):
 
 
 def read_table(engine, table_name):
+    """
+    Reads data from a Redshift table into a Pandas DataFrame.
+
+    :param engine: SQLAlchemy engine object connected to Redshift.
+    :param table_name: Name of the table to read data from.
+    :return: DataFrame containing the table data, or None if reading fails.
+    """
     if engine is None:
         logging.error("Engine is not initialized.")
         return None

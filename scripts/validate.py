@@ -71,6 +71,34 @@ import logging
 from helpers.metrics import rows_validated, missing_values_detected, rows_transformed, data_quality_issues
 
 def validate_and_clean_master_data(df, master_columns):
+    """
+    Validates and cleans a master data DataFrame by ensuring only specified columns are retained,
+    standardizing column formats, checking for duplicates, and logging changes.
+
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        The DataFrame containing master data to be validated and cleaned.
+    master_columns : list
+        A list of columns that should be present in the DataFrame. Any extra columns will be removed.
+
+    Returns:
+    --------
+    pd.DataFrame
+        The cleaned DataFrame with standardized columns, duplicates removed, and missing values handled.
+
+    Notes:
+    ------
+    - Only columns listed in `master_columns` are retained; any extra columns are dropped.
+    - Specific columns (`EmployeeID`, `TitleCode`, `AgencyID`) are converted to numeric types,
+      with non-numeric values coerced to NaN.
+    - Name columns (`LastName`, `FirstName`) are standardized to title case.
+    - Duplicates in key columns (`EmployeeID`, `TitleCode`, `AgencyID`) are identified and removed,
+      with a log entry made for any duplicate values found.
+    - The function logs all changes made during the cleaning process and updates relevant metrics,
+      such as the number of rows validated, missing values detected, and rows transformed.
+    """
+
     logging.info("Validating and cleaning master data")
 
     # Record total rows before cleaning
@@ -154,6 +182,25 @@ def print_summary_report(df, initial_row_count, changes_log):
 
 
 def harmonize_columns(df):
+    """
+    Harmonizes column names in the DataFrame by mapping variations of column names to a consistent naming convention.
+
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        The DataFrame whose columns need to be harmonized.
+
+    Returns:
+    --------
+    pd.DataFrame
+        The DataFrame with harmonized column names.
+
+    Notes:
+    ------
+    - The function currently harmonizes 'AgencyCode' to 'AgencyID'.
+    - Additional column mappings can be added to the `column_mapping` dictionary as needed.
+    """
+
     # Map variations to a consistent column name
     column_mapping = {
         'AgencyCode': 'AgencyID',  # Harmonize AgencyCode to AgencyID
@@ -166,6 +213,57 @@ def harmonize_columns(df):
 
 
 def validate_and_clean_transactional_data(df, transaction_columns):
+    """
+    Validates and cleans transactional data by performing several operations including harmonization of column names,
+    handling missing values, detecting and handling anomalies, and standardizing specific columns.
+
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        The DataFrame containing transactional data to be validated and cleaned.
+
+    transaction_columns : list of str
+        The list of columns that are required in the transactional data. The function will ensure these columns are present
+        and will drop any other columns not in this list.
+
+    Returns:
+    --------
+    pd.DataFrame
+        The cleaned DataFrame with harmonized columns, handled missing values, and standardized formats.
+
+    Process:
+    --------
+    - Harmonizes column names using `harmonize_columns`.
+    - Validates the presence of required columns and removes any extra columns.
+    - Checks for and handles missing values according to specific thresholds:
+        - Drops rows where a column has <= 5% missing values.
+        - Replaces missing string values with 'UNKNOWN' and numeric values with their mean where missing percentage is > 5% but <= 10%.
+        - Raises an error and sends an urgent email if missing values exceed 10% in any column.
+    - Handles anomalies:
+        - Converts non-numeric values to NaN for key columns like EmployeeID, TitleCode, AgencyID, and PayrollNumber.
+        - Replaces negative values with positive equivalents and outliers with the mean in measure columns.
+        - Replaces outliers in 'FiscalYear' with the most frequent year.
+    - Standardizes certain columns:
+        - Converts names in 'FirstName' and 'LastName' to title case.
+        - Converts categorical values like 'PayBasis' and 'WorkLocationBorough' to uppercase.
+        - Converts 'AgencyStartDate' to datetime format.
+    - Removes duplicate rows based on all columns.
+
+    Metrics:
+    --------
+    - Updates several metrics like `rows_validated`, `missing_values_detected`, and `rows_transformed` during the process.
+    - Logs all changes made to the data for traceability.
+
+    Raises:
+    -------
+    ValueError
+        If the missing values in any column exceed 10%, requiring manual intervention.
+
+    Example Usage:
+    --------------
+    cleaned_df = validate_and_clean_transactional_data(df, transaction_columns)
+    """
+
     logging.info("Validating and cleaning transactional data")
 
     df = harmonize_columns(df)
@@ -281,10 +379,6 @@ def validate_and_clean_transactional_data(df, transaction_columns):
     rows_transformed.set(len(df))  # Set the number of rows transformed
 
     return df
-
-
-import pandas as pd
-import logging
 
 def second_dbt_validation(df, required_columns):
     logging.info("Validating and cleaning master data")

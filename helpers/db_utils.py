@@ -16,6 +16,35 @@ database = os.getenv('database')
 
 
 def redshift_engine():
+    """
+    Creates and returns a SQLAlchemy engine for connecting to an Amazon Redshift database.
+
+    The function retrieves required connection parameters (username, password, host, port,
+    database) from environment variables. If any of these variables are missing, it logs
+    an error and returns None. If all variables are present, it constructs the Redshift
+    database URL and attempts to create a SQLAlchemy engine.
+
+    Returns:
+    --------
+    engine : sqlalchemy.engine.base.Engine or None
+        A SQLAlchemy engine object for the Redshift connection if successful, otherwise None.
+
+    Logs:
+    -----
+    - Logs an error if required environment variables are missing.
+    - Logs the success or failure of the engine creation.
+
+    Raises:
+    -------
+    Exception:
+        Logs any exceptions that occur during the engine creation process, and returns None.
+
+    Example Usage:
+    --------------
+    engine = redshift_engine()
+    if engine is not None:
+        # Proceed with using the engine to connect to the Redshift database
+    """
 
     if not all([username, password, host, port, database]):
         logging.error("Missing required environment variables for Redshift connection.")
@@ -33,6 +62,44 @@ def redshift_engine():
 
 
 def stage_data(engine, df, table_name):
+    """
+    Stages data to an Amazon Redshift database by uploading a DataFrame to a staging table.
+
+    This function uses the provided SQLAlchemy engine to upload a DataFrame (`df`) to a
+    specified staging table in the Redshift database. The staging table name is derived
+    by prefixing the given `table_name` with 'staging_' and converting it to lowercase.
+    The data is uploaded to the 'stg' schema and replaces any existing data in the table.
+
+    Parameters:
+    -----------
+    engine : sqlalchemy.engine.base.Engine
+        The SQLAlchemy engine used to connect to the Redshift database. If `engine` is None,
+        the function logs an error and exits.
+
+    df : pd.DataFrame
+        The DataFrame containing the data to be staged in Redshift.
+
+    table_name : str
+        The name of the target table in Redshift. The actual staging table name will be
+        prefixed with 'staging_'.
+
+    Logs:
+    -----
+    - Logs an error if the engine is not initialized.
+    - Logs the success or failure of the data staging process.
+
+    Raises:
+    -------
+    Exception:
+        Logs any exceptions that occur during the data staging process.
+
+    Example Usage:
+    --------------
+    engine = redshift_engine()
+    if engine is not None:
+        stage_data(engine, df, 'target_table')
+    """
+
     if engine is None:
         logging.error("Engine is not initialized.")
         return
@@ -43,7 +110,6 @@ def stage_data(engine, df, table_name):
         logging.info(f"Data successfully staged to {staging_table_name}.")
     except Exception as e:
         logging.error(f"Failed to stage data to {staging_table_name}: {str(e)}")
-
 
 
 def snowflake_engine():

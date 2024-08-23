@@ -15,4 +15,11 @@ data_quality_issues = Gauge('data_quality_issues', 'Number of data quality issue
 
 # Start Prometheus metrics server
 def start_metrics_server(port=8000):
+    """
+    Starts a Prometheus metrics server.
+
+    :param port: The port on which the metrics server will listen (default is 8000).
+    :return: None
+    """
     start_http_server(port)
+

@@ -20,34 +20,131 @@ def load_transactional_data(df, engine):
 engine = redshift_engine()
 metadata = MetaData()
 
+import pandas as pd
 
-def ingest_master_data():
-    logging.info(f"Ingesting master data")
-    s3_bucket = 'your-s3-bucket-name'
-    s3_prefix = 'your-folder-prefix/'
-    master_files = ['EmpMaster.csv', 'TitleMaster.csv', 'AgencyMaster.csv']
-    master_table_names = ['DimEmployee', 'DimTitle', 'DimAgency']
-    dim_columns = [
-        ['EmployeeID', 'LastName', 'FirstName', 'LeaveStatusasofJune30'],
-        ['TitleCode', 'TitleDescription'],
-        ['AgencyID', 'AgencyName', 'AgencyStartDate']
-    ]
-
-    for file_name, table_name, dim_col in zip(master_files, master_table_names, dim_columns):
-        df = extract.extract_from_s3(s3_bucket, s3_prefix, file_name)
-        df_transformed = transform.transform_master_data(df, dim_col)
-        stage_data(df_transformed, table_name)
+from helpers.db_utils import stage_data
 
 
-def ingest_transactional_data():
-    logging.info(f"Ingesting transactional data")
-    s3_bucket = 'your-s3-bucket-name'
-    s3_prefix = 'your-folder-prefix/'
-    payroll_files = ['nycpayroll_2020.csv', 'nycpayroll_2021.csv']
+def transform_master_data(master_files):
+    # Initialize empty DataFrames with the required columns
+    dim_employee_df = pd.DataFrame(columns=table_schemas['dim_employee'])
+    dim_agency_df = pd.DataFrame(columns=table_schemas['dim_agency'])
+    dim_title_df = pd.DataFrame(columns=table_schemas['dim_title'])
 
-    create_fact_table()
+    # Define a mapping from file names to dimension table names and their schemas
+    file_to_table_map = {
+        'EmpMaster.csv': ('dim_employee', table_schemas['dim_employee']),
+        'AgencyMaster.csv': ('dim_agency', table_schemas['dim_agency']),
+        'TitleMaster.csv': ('dim_title', table_schemas['dim_title'])
+    }
+
+    for file_name in master_files:
+        table_name, required_columns = file_to_table_map.get(file_name)
+
+        if table_name:
+            # Extract data from the file
+            df = extract_data(file_name)
+
+            # Validate and clean the master data
+            df_cleaned = validate_and_clean_master_data(df, required_columns)
+
+            # Ensure the DataFrame has all required columns
+            df_cleaned = ensure_columns(df_cleaned, required_columns)
+
+            # Append data to the appropriate dimension DataFrame
+            if table_name == 'dim_employee':
+                dim_employee_df = pd.concat([
+                    dim_employee_df,
+                    df_cleaned.drop_duplicates()
+                ], ignore_index=True)
+
+            elif table_name == 'dim_agency':
+                dim_agency_df = pd.concat([
+                    dim_agency_df,
+                    df_cleaned.drop_duplicates()
+                ], ignore_index=True)
+
+            elif table_name == 'dim_title':
+                dim_title_df = pd.concat([
+                    dim_title_df,
+                    df_cleaned.drop_duplicates()
+                ], ignore_index=True)
+
+    total_master_rows = len(dim_employee_df) + len(dim_agency_df) + len(dim_title_df)
+
+    stage_data(engine, dim_employee_df, 'dim_employee')
+    stage_data(engine, dim_agency_df, 'dim_agency')
+    stage_data(engine, dim_title_df, 'dim_title')
+    print(f"Master data successfully transformed and staged.")
+    print(f" - dim_employee: {len(dim_employee_df)} rows")
+    print(f" - dim_agency: {len(dim_agency_df)} rows")
+    print(f" - dim_title: {len(dim_title_df)} rows")
+    print(f"Total master data staged: {len(dim_employee_df) + len(dim_agency_df) + len(dim_title_df)} rows")
+
+
+transform_master_data(master_files)
+
+def transform_transactional_data(payroll_files):
+    # Initialize empty DataFrames for dimensions
+    dim_employee_df = pd.DataFrame(columns=table_schemas['dim_employee'])
+    dim_agency_df = pd.DataFrame(columns=table_schemas['dim_agency'])
+    dim_title_df = pd.DataFrame(columns=table_schemas['dim_title'])
+
+    fact_payroll_df = pd.DataFrame(columns=table_schemas['fact_payroll'])
 
     for file_name in payroll_files:
-        df = extract.extract_from_s3(s3_bucket, s3_prefix, file_name)
-        df_transformed = transform.transform_transactional_data(df, engine)
-        stage_data(df_transformed, 'FactPayroll')
+        # Extract data from the transactional files
+        df = extract_from_s3(s3_client, s3_bucket, s3_prefix, file_name)
+
+        # Clean and validate the transactional data
+        df_cleaned = validate_and_clean_transactional_data(df, transaction_columns)
+
+        # Update dimension DataFrames
+        # For dim_employee
+        dim_employee_data = df_cleaned[['EmployeeID', 'FirstName', 'LastName', 'LeaveStatusasofJune30']]
+        dim_employee_df = pd.concat([
+            dim_employee_df,
+            ensure_columns(dim_employee_data, table_schemas['dim_employee']).drop_duplicates()
+        ], ignore_index=True)
+
+        # For dim_agency
+        dim_agency_data = df_cleaned[['AgencyID', 'AgencyName', 'AgencyStartDate']]
+        dim_agency_df = pd.concat([
+            dim_agency_df,
+            ensure_columns(dim_agency_data, table_schemas['dim_agency']).drop_duplicates()
+        ], ignore_index=True)
+
+        # For dim_title
+        dim_title_data = df_cleaned[['TitleCode', 'TitleDescription']]
+        dim_title_df = pd.concat([
+            dim_title_df,
+            ensure_columns(dim_title_data, table_schemas['dim_title']).drop_duplicates()
+        ], ignore_index=True)
+
+        # Prepare fact_payroll DataFrame
+        df_cleaned['PayrollID'] = range(1, len(df_cleaned) + 1)
+        fact_payroll_data = df_cleaned[['PayrollID', 'EmployeeID', 'FiscalYear', 'PayrollNumber', 'BaseSalary',
+                                        'RegularHours', 'RegularGrossPaid', 'OTHours', 'TotalOTPaid', 'TotalOtherPay',
+                                        'WorkLocationBorough']]
+        fact_payroll_df = pd.concat([
+            fact_payroll_df,
+            ensure_columns(fact_payroll_data, table_schemas['fact_payroll']).drop_duplicates()
+        ], ignore_index=True)
+
+    total_transactional_rows = len(fact_payroll_df)
+
+    stage_data(engine, dim_employee_df, 'dim_employee')
+    stage_data(engine, dim_agency_df, 'dim_agency')
+    stage_data(engine, dim_title_df, 'dim_title')
+    stage_data(engine, fact_payroll_df, 'fact_payroll')
+
+    print(f"Transactional data successfully transformed and staged.")
+    print(f" - fact_payroll: {len(fact_payroll_df)} rows")
+    print(f"Total transactional data staged: {len(fact_payroll_df)} rows")
+    total_rows = total_master_rows + total_transactional_row
+    print(f"All data successfully transformed and staged.")
+    print(f" - Total master data: {total_master_rows} rows")
+    print(f" - Total transactional data: {total_transactional_rows} rows")
+    print(f"Total data staged: {total_rows} rows")
+
+
