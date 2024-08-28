@@ -1,13 +1,15 @@
-from helpers.s3_utils import extract_from_s3, initialize_s3_client
+from helpers.s3_utils import extract_from_s3, s3_client
+from helpers.metrics import files_extracted
 import logging
 from io import StringIO
 import pandas as pd
 
-# Define a gauge for monitoring S3 extraction
-files_extracted = Gauge('s3_files_extracted', 'Number of files extracted from S3')
 
-# s3 client
-s3_client = initialize_s3_client(aws_region, aws_access_key_id, aws_secret_access_key)
+
+import logging
+import pandas as pd
+from io import StringIO
+from helpers.s3_utils import s3_client
 
 
 def extract_from_s3(s3_client, bucket, prefix, file_name):
@@ -47,6 +49,7 @@ def extract_from_s3(s3_client, bucket, prefix, file_name):
     except Exception as e:
         logging.error(f"Failed to extract {file_name}: {str(e)}")
         raise
+
 
 def extract_data(file_name):
     """

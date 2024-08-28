@@ -1,11 +1,6 @@
 import subprocess
 import logging
 
-# Stage the data
-stage_data(engine, dim_employee_df, 'dim_employee')
-stage_data(engine, dim_agency_df, 'dim_agency')
-stage_data(engine, dim_title_df, 'dim_title')
-stage_data(engine, fact_payroll_df, 'fact_payroll')
 
 logging.info("Data successfully staged.")
 

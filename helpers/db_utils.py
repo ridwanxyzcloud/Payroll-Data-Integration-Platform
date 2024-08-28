@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
 import pandas as pd
-from snowflake.sqlalchemy import URL as URL_sn
+# from snowflake.sqlalchemy import URL as URL_sn
 import logging
 from dotenv import load_dotenv
 import os
@@ -106,22 +106,23 @@ def stage_data(engine, df, table_name):
 
     staging_table_name = f"staging_{table_name.lower()}"
     try:
-        df.to_sql(staging_table_name, engine, schema='stg', if_exists='replace', index=False)
+        df.to_sql(staging_table_name, engine, schema='stg', if_exists='append', index=False)
         logging.info(f"Data successfully staged to {staging_table_name}.")
     except Exception as e:
         logging.error(f"Failed to stage data to {staging_table_name}: {str(e)}")
 
 
+'''
 def snowflake_engine():
 
-    '''
+    
     constructs a snowflake engine object for snowflake DB from .env file
 
     parameter: None
 
     Returns:
      - snowflake-connector engine (sqlalchemy.Engine)
-    '''
+    
 
     # create engine for snowflake
     try:
@@ -156,3 +157,4 @@ def read_table(engine, table_name):
     except Exception as e:
         logging.error(f"Failed to read table {table_name}: {str(e)}")
         return None
+'''

@@ -6,7 +6,7 @@ from prometheus_client import Gauge
 import logging
 
 
-def initialize_s3_client(aws_region, aws_access_key_id, aws_secret_access_key):
+def s3_client(aws_region, aws_access_key_id, aws_secret_access_key):
     """
     Initializes and returns an S3 client using the specified AWS credentials.
 

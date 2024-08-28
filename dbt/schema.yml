@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: dim_employee
+    description: "Employee dimension table"
+    columns:
+      - name: EmployeeID
+        tests:
+          - unique
+          - not_null
+      - name: LastName
+        tests:
+          - not_null
+      - name: FirstName
+        tests:
+          - not_null
+
+  - name: dim_agency
+    description: "Agency dimension table"
+    columns:
+      - name: AgencyID
+        tests:
+          - unique
+          - not_null
+      - name: AgencyName
+        tests:
+          - not_null
+
+  - name: dim_title
+    description: "Title dimension table"
+    columns:
+      - name: TitleCode
+        tests:
+          - unique
+          - not_null
+      - name: TitleDescription
+        tests:
+          - not_null
+
+  - name: fact_payroll
+    description: "Payroll fact table"
+    columns:
+      - name: PayrollID
+        tests:
+          - unique
+          - not_null
+      - name: EmployeeID
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_employee')
+              field: EmployeeID
+      - name: AgencyID
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_agency')
+              field: AgencyID
+      - name: TitleCode
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_title')
+              field: TitleCode
