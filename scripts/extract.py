@@ -3,13 +3,8 @@ from helpers.metrics import files_extracted
 import logging
 from io import StringIO
 import pandas as pd
-
-
-
-import logging
-import pandas as pd
-from io import StringIO
 from helpers.s3_utils import s3_client
+
 
 
 def extract_from_s3(s3_client, bucket, prefix, file_name):

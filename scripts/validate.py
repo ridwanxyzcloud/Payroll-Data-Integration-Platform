@@ -137,6 +137,9 @@ def validate_and_clean_master_data(df, master_columns):
     # Log all changes made to the master data
     logging.info("Master Data Cleaning Summary: " + "; ".join(changes_log))
 
+    # drop any existing duplicate row if any 
+    df = df.drop_duplicate
+
     # Record the number of rows after cleaning
     rows_transformed.set(len(df))  # Set the number of rows transformed
 
@@ -328,26 +331,31 @@ def validate_and_clean_transactional_data(df, transaction_columns):
             # Handle outliers in measure columns
             mean_value = df[col].mean()
             std_dev = df[col].std()
-            upper_bound = mean_value + 2 * std_dev
-            lower_bound = mean_value - 2 * std_dev
+            #upper_bound = mean_value + 2 * std_dev
+            #lower_bound = mean_value - 2 * std_dev
 
-            outliers = (df[col] < lower_bound) | (df[col] > upper_bound)
-            if outliers.any():
-                df.loc[outliers, col] = mean_value  # Replace outliers with mean
-                changes_log.append(f"Replaced outliers in {col} with mean value: {mean_value}")
+            #outliers = (df[col] < lower_bound) | (df[col] > upper_bound)
+            #if outliers.any():
+            #    df.loc[outliers, col] = mean_value  # Replace outliers with mean
+             #   changes_log.append(f"Replaced outliers in {col} with mean value: {mean_value}")
 
     # Handle outliers in 'FiscalYear' column
+# Handle outliers in 'FiscalYear' column
     if 'FiscalYear' in df.columns:
         df['FiscalYear'] = pd.to_numeric(df['FiscalYear'], errors='coerce')
-        mean_value = df['FiscalYear'].mean()
-        std_dev = df['FiscalYear'].std()
-        upper_bound = mean_value + 2 * std_dev
-        lower_bound = mean_value - 2 * std_dev
-
-        outliers = (df['FiscalYear'] < lower_bound) | (df['FiscalYear'] > upper_bound)
+    
+        # Define a reasonable range for fiscal years (adjust as needed)
+        valid_years_range = (1900, 2100)
+    
+    # Identify outliers based on the fixed range
+        outliers = (df['FiscalYear'] < valid_years_range[0]) | (df['FiscalYear'] > valid_years_range[1])
+    
         if outliers.any():
+            # Replace outliers with the most frequent year
             most_frequent_year = df['FiscalYear'].mode()[0]  # Get the most frequent year
             df.loc[outliers, 'FiscalYear'] = most_frequent_year
+        
+            # Log the change
             changes_log.append(f"Replaced outlier FiscalYear values with most frequent year: {most_frequent_year}")
 
     # Standardize name columns
@@ -369,6 +377,8 @@ def validate_and_clean_transactional_data(df, transaction_columns):
     # Standardize date columns
     if 'AgencyStartDate' in df.columns:
         df['AgencyStartDate'] = pd.to_datetime(df['AgencyStartDate'], errors='coerce')
+        # Strip out time component
+        df['AgencyStartDate'] = df['AgencyStartDate'].dt.date
         changes_log.append("Standardized AgencyStartDate to datetime format.")
 
     # Remove duplicate rows based on all columns
@@ -461,5 +471,3 @@ def second_dbt_validation(df, required_columns):
     rows_transformed.set(len(df))  # Set the number of rows transformed
 
     return df
-
-

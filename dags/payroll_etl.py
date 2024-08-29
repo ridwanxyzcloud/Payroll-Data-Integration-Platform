@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import logging
 from helpers.logging_utils import setup_logging
 from scripts.extract import extract_data
-from scripts.transform import transform_master_data, transform_transactional_data
+from scripts.transform_ingest import transform_master_data, transform_transactional_data
 from scripts.load import load_master_data, load_transactional_data
 from helpers.db_utils import create_db_engine
 from helpers.metrics import start_metrics_server
