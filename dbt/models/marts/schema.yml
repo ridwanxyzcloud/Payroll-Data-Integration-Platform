@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: payroll_aggregate_by_agency
+    description: "Aggregate payroll data by agency and fiscal year"
+    columns:
+      - name: AgencyID
+        tests:
+          - not_null
+      - name: FiscalYear
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["2020", "2021", "2022", "2023"]
+      - name: TotalBaseSalary
+        tests:
+          - not_null
+      - name: TotalRegularGrossPaid
+        tests:
+          - not_null
+      - name: TotalOTHours
+        tests:
+          - not_null
+      - name: TotalOTPaid
+        tests:
+          - not_null
+      - name: TotalSupplementalPay
+        tests:
+          - not_null
+      - name: TotalEmployees
+        tests:
+          - not_null
+
+  - name: overtime_by_employee_and_agency
+    description: "Aggregate overtime data by employee and agency"
+    columns:
+      - name: EmployeeID
+        tests:
+          - not_null
+      - name: FirstName
+        tests:
+          - not_null
+      - name: LastName
+        tests:
+          - not_null
+      - name: AgencyID
+        tests:
+          - not_null
+      - name: TotalOTHours
+        tests:
+          - not_null
+      - name: TotalOTPaid
+        tests:
+          - not_null

@@ -37,6 +37,38 @@ models:
         tests:
           - not_null
 
+  - name: dim_date
+    description: "Date dimension table"
+    columns:
+      - name: DateID
+        tests:
+          - unique
+          - not_null
+      - name: Date
+        tests:
+          - not_null
+      - name: Year
+        tests:
+          - not_null
+      - name: Month
+        tests:
+          - not_null
+      - name: Day
+        tests:
+          - not_null
+      - name: FiscalYear
+        tests:
+          - not_null
+      - name: Quarter
+        tests:
+          - not_null
+      - name: MonthName
+        tests:
+          - not_null
+      - name: DayOfWeek
+        tests:
+          - not_null
+
   - name: fact_payroll
     description: "Payroll fact table"
     columns:
@@ -62,3 +94,9 @@ models:
           - relationships:
               to: ref('dim_title')
               field: TitleCode
+      - name: DateID
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: DateID

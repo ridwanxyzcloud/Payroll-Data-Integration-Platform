@@ -1,7 +1,10 @@
 -- models/staging/stg_dim_employee.sql
-select
-    EmployeeID,
-    FirstName,
-    LastName,
-    LeaveStatusasofJune30
-from {{ source('stg', 'staging_dim_employee') }}
+WITH cleaned AS (
+    SELECT
+        EmployeeID::INT,
+        INITCAP(FirstName) AS FirstName,
+        INITCAP(LastName) AS LastName,
+        COALESCE(LeaveStatusasofJune30, '')::VARCHAR(10) AS LeaveStatusasofJune30
+    FROM {{ source('stg', 'staging_dim_employee') }}
+)
+SELECT * FROM cleaned;

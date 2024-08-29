@@ -1,6 +1,9 @@
 -- models/staging/stg_dim_agency.sql
-select
-    AgencyID,
-    AgencyName,
-    AgencyStartDate
-from {{ source('stg', 'staging_dim_agency') }}
+WITH cleaned AS (
+    SELECT
+        AgencyID::INT,
+        INITCAP(AgencyName) AS AgencyName,
+        COALESCE(AgencyStartDate::DATE, '1900-01-01') AS AgencyStartDate
+    FROM {{ source('stg', 'staging_dim_agency') }}
+)
+SELECT * FROM cleaned;
