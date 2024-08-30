@@ -1,4 +1,3 @@
--- models/staging/stg_fact_payroll.sql
 WITH cleaned AS (
     SELECT
         PayrollNumber::INT,
@@ -13,4 +12,5 @@ WITH cleaned AS (
         WorkLocationBorough::VARCHAR(20)
     FROM {{ source('stg', 'staging_fact_payroll') }}
 )
-SELECT * FROM cleaned;
+
+SELECT * FROM cleaned

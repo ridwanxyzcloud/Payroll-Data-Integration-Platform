@@ -1,8 +1,13 @@
 name: payrolldb
-version: 1.0
+version: '1.0'
 profile: payrolldb_profile
-model-paths: ["models"]
+source-paths: ["models"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_modules"
 
+# Define model configurations
 models:
   payrolldb:
     staging:
@@ -12,9 +17,30 @@ models:
       materialized: incremental
       schema: edw
       +incremental_strategy: merge
+      # Define unique keys for incremental models
+      dim_employee:
+        +unique_key: EmployeeID
+      dim_agency:
+        +unique_key: AgencyID
+      dim_title:
+        +unique_key: TitleCode
+      fact_payroll:
+        +unique_key: PayrollID
+    marts:
+      # Configuration for marts models
+      +materialized: incremental
+      +incremental_strategy: merge
+      +schema: marts
+      # Define unique keys for incremental models in marts
+      overtime_by_employee_and_agency:
+        +unique_key: (EmployeeID, AgencyID)
+      payroll_aggregate_by_agency:
+        +unique_key: (AgencyID, FiscalYear)
 
+# Define configurations for seeds
 seeds:
   quote_columns: True
 
+# Define configurations for tests
 tests:
   severity: error

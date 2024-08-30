@@ -1,5 +1,19 @@
 version: 2
 
+sources:
+  - name: stg
+    schema: stg
+    description: "Staging schema containing raw data"
+    tables:
+      - name: staging_fact_payroll
+        description: "Staged payroll data"
+      - name: staging_dim_employee
+        description: "Staged employee data"
+      - name: staging_dim_agency
+        description: "Staged agency data"
+      - name: staging_dim_title
+        description: "Staged title data"
+
 models:
   - name: stg_fact_payroll
     description: "Staging table for raw payroll data"

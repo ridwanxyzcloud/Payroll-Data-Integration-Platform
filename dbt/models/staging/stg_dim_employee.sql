@@ -1,4 +1,3 @@
--- models/staging/stg_dim_employee.sql
 WITH cleaned AS (
     SELECT
         EmployeeID::INT,
@@ -7,4 +6,4 @@ WITH cleaned AS (
         COALESCE(LeaveStatusasofJune30, '')::VARCHAR(10) AS LeaveStatusasofJune30
     FROM {{ source('stg', 'staging_dim_employee') }}
 )
-SELECT * FROM cleaned;
+SELECT * FROM cleaned

@@ -1,4 +1,3 @@
--- models/staging/stg_dim_agency.sql
 WITH cleaned AS (
     SELECT
         AgencyID::INT,
@@ -6,4 +5,4 @@ WITH cleaned AS (
         COALESCE(AgencyStartDate::DATE, '1900-01-01') AS AgencyStartDate
     FROM {{ source('stg', 'staging_dim_agency') }}
 )
-SELECT * FROM cleaned;
+SELECT * FROM cleaned
