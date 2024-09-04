@@ -1,3 +1,5 @@
+import pandas as pd
+import logging
 
 def ensure_columns(df, columns):
     """
@@ -45,7 +47,7 @@ def transform_master_data(master_files):
         if table_name:
             try:
                 # Extract data from the file
-                df = extract_data(file_name)
+                df = extract_data(file_name, s3_client, s3_bucket, s3_prefix)
 
                 # Validate and clean the master data
                 df_cleaned = validate_and_clean_master_data(df, required_columns)
@@ -120,10 +122,10 @@ def transform_transactional_data(payroll_files):
     for file_name in payroll_files:
         try:
             # Extract data from the transactional files
-            df = extract_from_s3(s3_client, s3_bucket, s3_prefix, file_name)
+            df = extract_data(file_name, s3_client, s3_bucket, s3_prefix)
 
             # Clean and validate the transactional data
-            df_cleaned = validate_and_clean_transactional_data(df, transaction_columns)
+            df_cleaned = validate_and_clean_transactional_data(df, attributes)
 
             # Update dimension DataFrames
             # For dim_employee
@@ -148,7 +150,7 @@ def transform_transactional_data(payroll_files):
             ], ignore_index=True)
             
             # Prepare fact_payroll DataFrame
-            fact_payroll_data = df_cleaned[['PayrollNumber', 'EmployeeID', 'FiscalYear', 'BaseSalary',
+            fact_payroll_data = df_cleaned[['PayrollNumber', 'EmployeeID', 'AgencyID', 'TitleCode','FiscalYear', 'BaseSalary',
                                             'RegularHours', 'RegularGrossPaid', 'OTHours', 'TotalOTPaid', 'TotalOtherPay',
                                             'WorkLocationBorough']]
             fact_payroll_df = pd.concat([
@@ -172,7 +174,7 @@ def transform_transactional_data(payroll_files):
 
     # Calculate total rows staged
     total_transactional_rows = len(fact_payroll_df)
-    total_rows = total_master_rows + total_transactional_rows  # Assuming total_master_rows is defined elsewhere
+    #total_rows = total_master_rows + total_transactional_rows
 
     # Update Prometheus metrics
     rows_transformed.set(len(fact_payroll_df))
@@ -183,6 +185,6 @@ def transform_transactional_data(payroll_files):
     logging.info(f" - fact_payroll: {total_transactional_rows} rows")
     logging.info(f"Total transactional data staged: {total_transactional_rows} rows")
     logging.info("All data successfully transformed and staged.")
-    logging.info(f" - Total master data: {total_master_rows} rows")  # Ensure total_master_rows is defined
+    #logging.info(f" - Total master data: {total_master_rows} rows")  # Ensure total_master_rows is defined
     logging.info(f" - Total transactional data: {total_transactional_rows} rows")
-    logging.info(f"Total data staged: {total_rows} rows")
+    #logging.info(f"Total data staged: {total_rows} rows")

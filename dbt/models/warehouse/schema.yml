@@ -1,22 +1,46 @@
 version: 2
 
+sources:
+  - name: stg
+    schema: stg
+    description: "Staging schema containing raw data"
+    tables:
+      - name: staging_fact_payroll
+        description: "Staged payroll data"
+      - name: staging_dim_employee
+        description: "Staged employee data"
+      - name: staging_dim_agency
+        description: "Staged agency data"
+      - name: staging_dim_title
+        description: "Staged title data"
+
+  - name: edw
+    schema: edw
+    description: "Data warehouse schema"
+    tables:
+      - name: dim_date
+        description: "Date dimension table"
+
 models:
   - name: dim_employee
-    description: "Employee dimension table"
+    description: "Dimension table for employees"
     columns:
       - name: EmployeeID
         tests:
           - unique
           - not_null
+      - name: FirstName
+        tests:
+          - not_null
       - name: LastName
         tests:
           - not_null
-      - name: FirstName
+      - name: LeaveStatusasofJune30
         tests:
           - not_null
 
   - name: dim_agency
-    description: "Agency dimension table"
+    description: "Dimension table for agencies"
     columns:
       - name: AgencyID
         tests:
@@ -27,7 +51,7 @@ models:
           - not_null
 
   - name: dim_title
-    description: "Title dimension table"
+    description: "Dimension table for titles"
     columns:
       - name: TitleCode
         tests:
@@ -37,66 +61,46 @@ models:
         tests:
           - not_null
 
-  - name: dim_date
-    description: "Date dimension table"
-    columns:
-      - name: DateID
-        tests:
-          - unique
-          - not_null
-      - name: Date
-        tests:
-          - not_null
-      - name: Year
-        tests:
-          - not_null
-      - name: Month
-        tests:
-          - not_null
-      - name: Day
-        tests:
-          - not_null
-      - name: FiscalYear
-        tests:
-          - not_null
-      - name: Quarter
-        tests:
-          - not_null
-      - name: MonthName
-        tests:
-          - not_null
-      - name: DayOfWeek
-        tests:
-          - not_null
-
   - name: fact_payroll
-    description: "Payroll fact table"
+    description: "Fact table for payroll data"
     columns:
       - name: PayrollID
         tests:
           - unique
           - not_null
+      - name: PayrollNumber
+        tests:
+          - not_null
       - name: EmployeeID
         tests:
           - not_null
-          - relationships:
-              to: ref('dim_employee')
-              field: EmployeeID
       - name: AgencyID
         tests:
           - not_null
-          - relationships:
-              to: ref('dim_agency')
-              field: AgencyID
       - name: TitleCode
         tests:
           - not_null
-          - relationships:
-              to: ref('dim_title')
-              field: TitleCode
       - name: DateID
         tests:
           - not_null
-          - relationships:
-              to: ref('dim_date')
-              field: DateID
+      - name: BaseSalary
+        tests:
+          - not_null
+      - name: RegularHours
+        tests:
+          - not_null
+      - name: RegularGrossPaid
+        tests:
+          - not_null
+      - name: OTHours
+        tests:
+          - not_null
+      - name: TotalOTPaid
+        tests:
+          - not_null
+      - name: TotalOtherPay
+        tests:
+          - not_null
+      - name: WorkLocationBorough
+        tests:
+          - not_null

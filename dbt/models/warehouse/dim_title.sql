@@ -1,22 +1,17 @@
 -- models/warehouse/dim_title.sql
-{{ config(
-    materialized='incremental',
-    unique_key='TitleCode',
-    incremental_strategy='merge'
-) }}
 
-with source_data as (
-    select distinct
-        cast(TitleCode as int) as TitleCode,
-        cast(TitleDescription as text) as TitleDescription
-    from {{ ref('stg_dim_title') }}
+WITH cleaned AS (
+    SELECT DISTINCT
+        TitleCode::INT AS TitleCode,
+        COALESCE(TitleDescription, '')::TEXT AS TitleDescription
+    FROM {{ source('stg', 'staging_dim_title') }}
 )
 
-select
+SELECT
     TitleCode,
     TitleDescription
-from source_data
+FROM cleaned
 
 {% if is_incremental() %}
-    where TitleCode not in (select TitleCode from {{ this }})
+    WHERE TitleCode NOT IN (SELECT TitleCode FROM {{ this }})
 {% endif %}

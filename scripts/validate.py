@@ -1,76 +1,10 @@
 import pandas as pd
 import logging
-from helpers.metrics import data_quality_issues,rows_validated, rows_transformed,missing_values_detected
+from helpers.metrics_server import data_quality_issues,rows_validated, rows_transformed,missing_values_detected
 from helpers.alert_utils import send_urgent_email
 
-def validate_and_clean_data(df, dim_col):
-    logging.info(f"Validating and cleaning data")
 
-    total_rows = len(df)
-    rows_validated.set(total_rows)
-
-    for col in dim_col:
-        if col not in df.columns:
-            df[col] = None
-
-    # Check for missing values
-    missing = df.isnull().sum()
-    missing_values_detected.set(missing.sum())  # Set the total number of missing values detected
-
-    missing_percentage = (missing / total_rows) * 100
-
-    # Log changes
-    changes_log = []
-
-    # Handling based on missing value percentages
-    for col, pct in missing_percentage.items():
-        if pct <= 5:
-            df.dropna(subset=[col], inplace=True)
-            changes_log.append(f"Dropped rows with missing values in {col} as it was <= 5%")
-        elif 5 < pct <= 10:
-            if df[col].dtype == 'object':  # Replace with 'UNKNOWN' for strings
-                df[col].fillna('UNKNOWN', inplace=True)
-                changes_log.append(f"Replaced missing string values in {col} with 'UNKNOWN'")
-            else:
-                mean_value = df[col].mean()
-                df[col].fillna(mean_value, inplace=True)
-                changes_log.append(f"Replaced missing numeric values in {col} with mean: {mean_value}")
-        else:
-            logging.error(f"Missing values in {col} exceed 10%. Manual intervention required.")
-            send_urgent_email(
-                subject=f"Data Quality Issue Detected in {col}",
-                body=f"High percentage of missing values in {col}: {pct}%. Immediate attention required.",
-                to_email="data.engineer@example.com"
-            )
-            raise ValueError(f"High percentage of missing values in {col}: {pct}%")
-
-    # Anomaly detection
-    for col in df.select_dtypes(include=['number']).columns:
-        # Replace negative values
-        if (df[col] < 0).any():
-            df.loc[df[col] < 0, col] = df[col].mean()
-            changes_log.append(f"Replaced negative values in {col} with mean.")
-
-        # Replace values greater than 2 * standard deviation
-        upper_bound = df[col].mean() + 2 * df[col].std()
-        if (df[col] > upper_bound).any():
-            df.loc[df[col] > upper_bound, col] = df[col].mean()
-            changes_log.append(f"Replaced outliers in {col} (>{2} * SD) with mean.")
-
-    # Log all changes made to a table or a file
-    logging.info("Data Cleaning Summary: " + "; ".join(changes_log))
-
-    df.drop_duplicates(inplace=True)
-    rows_transformed.set(len(df))  # Set the number of rows transformed
-
-    return df
-
-
-import pandas as pd
-import logging
-from helpers.metrics import rows_validated, missing_values_detected, rows_transformed, data_quality_issues
-
-def validate_and_clean_master_data(df, master_columns):
+def validate_and_clean_master_data(df, attributes):
     """
     Validates and cleans a master data DataFrame by ensuring only specified columns are retained,
     standardizing column formats, checking for duplicates, and logging changes.
@@ -106,7 +40,7 @@ def validate_and_clean_master_data(df, master_columns):
     rows_validated.set(total_rows)  # Set the number of rows being validated
 
     # Ensure only columns in master_columns are present, drop any extra columns
-    available_columns = [col for col in master_columns if col in df.columns]
+    available_columns = [col for col in attributes if col in df.columns]
     df = df[available_columns]
 
     # Initialize changes log
@@ -138,7 +72,7 @@ def validate_and_clean_master_data(df, master_columns):
     logging.info("Master Data Cleaning Summary: " + "; ".join(changes_log))
 
     # drop any existing duplicate row if any 
-    df = df.drop_duplicate
+    df = df.drop_duplicates()
 
     # Record the number of rows after cleaning
     rows_transformed.set(len(df))  # Set the number of rows transformed
@@ -215,7 +149,7 @@ def harmonize_columns(df):
     return df
 
 
-def validate_and_clean_transactional_data(df, transaction_columns):
+def validate_and_clean_transactional_data(df,attributes):
     """
     Validates and cleans transactional data by performing several operations including harmonization of column names,
     handling missing values, detecting and handling anomalies, and standardizing specific columns.
@@ -275,7 +209,7 @@ def validate_and_clean_transactional_data(df, transaction_columns):
     rows_validated.set(total_rows)  # Set the number of rows being validated
 
     # Ensure all required columns are present and drop any extra columns
-    df = df[transaction_columns]
+    df = df[attributes]
 
     # Check for missing values
     missing = df.isnull().sum()

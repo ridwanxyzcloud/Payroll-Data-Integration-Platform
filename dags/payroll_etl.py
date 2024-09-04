@@ -1,127 +1,121 @@
+import sys
+import os
+from datetime import timedelta
+
+# project root
+sys.path.append('/opt/airflow')
+
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
-from datetime import datetime, timedelta
+from datetime import datetime
+import pandas as pd
+import os
 import logging
-from helpers.logging_utils import setup_logging
-from scripts.extract import extract_data
-from scripts.transform_ingest import transform_master_data, transform_transactional_data
-from scripts.load import load_master_data, load_transactional_data
-from helpers.db_utils import create_db_engine
-from helpers.metrics import start_metrics_server
 from dotenv import load_dotenv
 
-# Load credentials from .env file
-load_dotenv(override=True)
+# Import your existing functions and utilities
+from helpers.logging_utils import setup_logging
+from helpers.db_utils import stage_data, redshift_engine
+from scripts.transform_ingest import ensure_columns, transform_master_data, transform_transactional_data
+from scripts.extract import extract_data
+from scripts.validate import validate_and_clean_master_data, validate_and_clean_transactional_data
+from helpers.s3_utils import get_s3_client
+from helpers.metrics_server import (
+    start_metrics_server, files_extracted, rows_extracted, rows_transformed, rows_validated, 
+    missing_values_detected, rows_staged, rows_processed, rows_cleaned, data_quality_issues
+)
+from scripts.dbt_trigger import dbt_trigger  # Import the dbt_trigger function
 
-# Setup logging
-setup_logging()
-
-# Start Prometheus metrics server
-start_metrics_server(port=8000)
-
-# Database configuration
-db_url = 'postgresql://username:password@redshift-cluster-url:5439/nyc_payroll'
-engine = create_db_engine(db_url)
-
-# File definitions
-master_files = ['EmpMaster.csv', 'TitleMaster.csv', 'AgencyMaster.csv']
-payroll_files = ['nycpayroll_2020.csv', 'nycpayroll_2021.csv']
-master_table_names = ['DimEmployee', 'DimTitle', 'DimAgency']
-master_columns = [
-    ['EmployeeID', 'LastName', 'FirstName'],
-    ['TitleCode', 'TitleDescription'],
-    ['AgencyID', 'AgencyName']
-]
-
-transactional_columns = [
-    'FiscalYear', 'PayrollNumber', 'AgencyID', 'AgencyName', 'EmployeeID', 'LastName', 'FirstName',
-    'AgencyStartDate', 'WorkLocationBorough', 'TitleCode', 'TitleDescription', 'LeaveStatusasofJune30',
-    'BaseSalary', 'PayBasis', 'RegularHours', 'RegularGrossPaid', 'OTHours', 'TotalOTPaid', 'TotalOtherPay'
-]
-
-dim_columns = [
-    ['EmployeeID', 'LastName', 'FirstName', 'LeaveStatusasofJune30'],
-    ['TitleCode', 'TitleDescription'],
-    ['AgencyID', 'AgencyName', 'AgencyStartDate']
-]
-required_columns = [
-        'FiscalYear', 'PayrollNumber', 'AgencyID', 'EmployeeID', 'WorkLocationBorough',
-        'TitleCode', 'BaseSalary', 'PayBasis', 'RegularHours', 'RegularGrossPaid',
-        'OTHours', 'TotalOTPaid', 'TotalOtherPay'
-    ]
-
-
-
-# AWS and S3 configuration
-s3_bucket = os.getenv("s3_bucket")
-s3_prefix = os.getenv("s3_prefix")
-aws_region = os.getenv("aws_region")
-aws_access_key_id = os.getenv("aws_access_key_id")
-aws_secret_access_key = os.getenv("aws_secret_access_key")
-
-
-# Define default_args for the DAG
+# Define the default_args for the DAG
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2024, 1, 1),
-    'email_on_failure': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'start_date': datetime(2023, 8, 1),
+    'email_on_failure': True,
+    'email_on_retry': False,
+    'retries': 1
 }
 
-# Initialize DAG
-dag = DAG(
-    'nyc_payroll_etl',
+# Define the DAG
+with DAG(
+    'data_processing_dag',
     default_args=default_args,
-    description='NYC Payroll ETL Pipeline',
-    schedule_interval='@daily',
-)
+    description='DAG for processing master and transactional data and running DBT transformations',
+    schedule_interval=None,  # Use cron syntax for scheduling
+    catchup=False,
+) as dag:
 
-def ingest_master_data():
-    logging.info("Starting master data ingestion")
-    for file_name, table_name, dim_col in zip(master_files, master_table_names, dim_columns):
-        df = extract_data(file_name)
-        df_transformed = transform_master_data(df, dim_col)
-        load_master_data(df_transformed, table_name, engine)
-        logging.info(f"Completed loading {file_name} into {table_name}")
+    def load_env_and_setup():
+        load_dotenv(override=True)
 
-def ingest_transactional_data():
-    logging.info("Starting transactional data ingestion")
-    for file_name in payroll_files:
-        df = extract_data(file_name)
-        df_transformed = transform_transactional_data(df, engine)
-        load_transactional_data(df_transformed, engine)
-        logging.info(f"Completed loading {file_name} into FactPayroll")
+        # Start Prometheus metrics server
+        start_metrics_server(port=8000)
+        setup_logging()
+        global s3_client, engine, s3_bucket, s3_prefix, table_schemas, attributes, master_files, payroll_files
 
-def trigger_dbt():
-    logging.info("Triggering DBT")
-    try:
-        import os
-        os.system('dbt run --profiles-dir /path/to/your/dbt/profiles --project-dir /path/to/your/dbt/project')
-        logging.info("DBT run completed successfully")
-    except Exception as e:
-        logging.error(f"Failed to trigger DBT: {str(e)}")
-        raise
+        s3_client = get_s3_client()
+        engine = redshift_engine()
+        
+        s3_bucket = os.getenv("s3_bucket")
+        s3_prefix = os.getenv("s3_prefix")
 
-# Airflow tasks
-t1 = PythonOperator(
-    task_id='extract_transform_master_data',
-    python_callable=ingest_master_data,
-    dag=dag
-)
+        # Validate environment variables
+        if not s3_bucket or not s3_prefix:
+            logging.error("s3_bucket or s3_prefix environment variables are not set.")
+            raise ValueError("s3_prefix or s3_prefix environment variables are not set.")
+        
+        master_files = ['EmpMaster.csv', 'TitleMaster.csv', 'AgencyMaster.csv']
 
-t2 = PythonOperator(
-    task_id='extract_transform_transactional_data',
-    python_callable=ingest_transactional_data,
-    dag=dag
-)
+        payroll_files = ['nycpayroll_2021.csv','nycpayroll_2020.csv']
 
-t3 = PythonOperator(
-    task_id='trigger_dbt',
-    python_callable=trigger_dbt,
-    dag=dag
-)
+        table_schemas = {
+            'dim_employee': ['EmployeeID', 'FirstName', 'LastName', 'LeaveStatusasofJune30'],
+            'dim_agency': ['AgencyID', 'AgencyName', 'AgencyStartDate'],
+            'dim_title': ['TitleCode', 'TitleDescription'],
+            'fact_payroll': ['PayrollNumber', 'EmployeeID', 'AgencyID', 'TitleCode', 'FiscalYear', 'BaseSalary', 
+                             'RegularHours', 'RegularGrossPaid', 'OTHours', 'TotalOTPaid', 'TotalOtherPay', 
+                             'WorkLocationBorough']
+        }
 
-# Define task dependencies
-t1 >> t2 >> t3
+        attributes = [
+            'FiscalYear', 'PayrollNumber', 'AgencyID', 'AgencyName', 'EmployeeID', 'LastName', 'FirstName',
+            'AgencyStartDate', 'WorkLocationBorough', 'TitleCode', 'TitleDescription', 'LeaveStatusasofJune30',
+            'BaseSalary', 'PayBasis', 'RegularHours', 'RegularGrossPaid', 'OTHours', 'TotalOTPaid', 'TotalOtherPay'
+        ]
+
+
+    
+    def process_master_data():
+        master_files = ['EmpMaster.csv', 'TitleMaster.csv', 'AgencyMaster.csv']
+        transform_master_data(master_files)
+
+    def process_transactional_data():
+        payroll_files = ['nycpayroll_2021.csv','nycpayroll_2020.csv']
+        transform_transactional_data(payroll_files)
+
+    # Initialize environment and setup task
+    init_task = PythonOperator(
+        task_id='init_env_and_setup',
+        python_callable=load_env_and_setup,
+    )
+
+    # Task to transform and stage master data
+    master_data_task = PythonOperator(
+        task_id='transform_and_stage_master_data',
+        python_callable=process_master_data,
+    )
+
+    # Task to transform and stage transactional data
+    transactional_data_task = PythonOperator(
+        task_id='transform_and_stage_transactional_data',
+        python_callable=process_transactional_data,
+    )
+
+    # Task to trigger DBT for final transformations and load
+    dbt_task = PythonOperator(
+        task_id='dbt_run',
+        python_callable=dbt_trigger,
+    )
+
+    # Define task dependencies
+    init_task >> master_data_task >> transactional_data_task >> dbt_task

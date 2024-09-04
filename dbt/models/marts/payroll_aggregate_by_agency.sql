@@ -1,31 +1,26 @@
--- models/marts/payroll_aggregate_by_agency.sql
-{{ config(
-    materialized='table'
-) }}
-
-with source_data as (
-    select
+WITH source_data AS (
+    SELECT
         a.AgencyID,
         a.AgencyName,
         f.FiscalYear,
-        sum(f.BaseSalary) as TotalBaseSalary,
-        sum(f.RegularGrossPaid) as TotalRegularGrossPaid,
-        sum(f.OTHours) as TotalOTHours,
-        sum(f.TotalOTPaid) as TotalOTPaid,
-        sum(f.TotalOtherPaid) as TotalOtherPaid,
-        sum(f.TotalOTPaid + f.TotalOtherPaid) as TotalSupplementalPay,
-        count(distinct f.EmployeeID) as TotalEmployees
-    from
-        {{ ref('fact_payroll') }} f
-    join
-        {{ ref('dim_agency') }} a
-    on
+        SUM(f.BaseSalary) AS TotalBaseSalary,
+        SUM(f.RegularGrossPaid) AS TotalRegularGrossPaid,
+        SUM(f.OTHours) AS TotalOTHours,
+        SUM(f.TotalOTPaid) AS TotalOTPaid,
+        SUM(f.TotalOtherPay) AS TotalOtherPay,
+        SUM(f.TotalOTPaid + f.TotalOtherPay) AS TotalSupplementalPay,
+        COUNT(DISTINCT f.EmployeeID) AS TotalEmployees
+    FROM
+        {{ source('stg', 'staging_fact_payroll') }} f  -- Aggregating directly from the source
+    JOIN
+        {{ source('stg', 'staging_dim_agency') }} a
+    ON
         f.AgencyID = a.AgencyID
-    group by
+    GROUP BY
         a.AgencyID, a.AgencyName, f.FiscalYear
 )
 
-select
+SELECT
     AgencyID,
     AgencyName,
     FiscalYear,
@@ -33,7 +28,7 @@ select
     TotalRegularGrossPaid,
     TotalOTHours,
     TotalOTPaid,
-    TotalOtherPaid,
+    TotalOtherPay,
     TotalSupplementalPay,
     TotalEmployees
-from source_data
+FROM source_data

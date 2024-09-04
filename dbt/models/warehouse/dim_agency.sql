@@ -1,24 +1,22 @@
--- models/warehouse/dim_agency.sql
-{{ config(
-    materialized='incremental',
-    unique_key='AgencyID',
-    incremental_strategy='merge'
-) }}
-
-with source_data as (
-    select distinct
-        cast(AgencyID as int) as AgencyID,
-        cast(AgencyName as varchar(100)) as AgencyName,
-        cast(AgencyStartDate as date) as AgencyStartDate
-    from {{ ref('stg_dim_agency') }}
+WITH transformed AS (
+    SELECT DISTINCT
+        -- Directly cast and transform the source data
+        AgencyID::INT AS AgencyID,
+        INITCAP(AgencyName) AS AgencyName,
+        COALESCE(AgencyStartDate::DATE, '1900-01-01') AS AgencyStartDate
+    FROM {{ source('stg', 'staging_dim_agency') }}
 )
 
-select
+SELECT
     AgencyID,
     AgencyName,
     AgencyStartDate
-from source_data
+FROM transformed
 
 {% if is_incremental() %}
-    where AgencyID not in (select AgencyID from {{ this }})
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM {{ this }}
+        WHERE AgencyID = transformed.AgencyID
+    )
 {% endif %}

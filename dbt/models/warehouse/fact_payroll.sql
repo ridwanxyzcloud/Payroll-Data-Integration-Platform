@@ -1,45 +1,50 @@
--- models/warehouse/fact_payroll.sql
-{{ config(
-    materialized='incremental',
-    unique_key='PayrollID',
-    incremental_strategy='merge'
-) }}
+WITH cleaned AS (
+    SELECT DISTINCT
+        -- Generate a pseudo-UUID as a VARCHAR
+        md5(random()::text || getdate()::text) AS PayrollID,  -- Using MD5 hash as UUID substitute
+        PayrollNumber::INT AS PayrollNumber,
+        EmployeeID::INT AS EmployeeID,
+        AgencyID::INT AS AgencyID,
+        TitleCode::INT AS TitleCode,
+        FiscalYear::INT AS FiscalYear,
+        BaseSalary::DECIMAL(10, 2) AS BaseSalary,
+        RegularHours::DECIMAL(10, 2) AS RegularHours,
+        RegularGrossPaid::DECIMAL(10, 2) AS RegularGrossPaid,
+        OTHours::DECIMAL(10, 2) AS OTHours,
+        TotalOTPaid::DECIMAL(10, 2) AS TotalOTPaid,
+        TotalOtherPay::DECIMAL(10, 2) AS TotalOtherPay,
+        WorkLocationBorough::VARCHAR(20) AS WorkLocationBorough
+    FROM {{ source('stg', 'staging_fact_payroll') }}
+    WHERE PayrollNumber IS NOT NULL  -- Filter out rows where essential fields are null
+),
 
-WITH fiscal_year_lookup AS (
+fiscal_year_lookup AS (
     SELECT DateID, FiscalYear
-    FROM {{ ref('dim_date') }}
+    FROM {{ source('edw', 'dim_date') }}
 )
 
-, source_data AS (
-    SELECT
-        nextval('factpayroll_seq') AS PayrollID,
-        f.EmployeeID,
-        f.AgencyID,
-        f.TitleCode,
-        fy.DateID AS DateID,
-        f.PayrollNumber,
-        f.PayBasis,
-        f.WorkLocationBorough,
-        f.RegularHours,
-        f.BaseSalary,
-        f.RegularGrossPaid,
-        f.OTHours,
-        f.TotalOTPaid,
-        f.TotalOtherPay
-    FROM {{ ref('stg_fact_payroll') }} f
-    LEFT JOIN fiscal_year_lookup fy
-    ON f.FiscalYear = fy.FiscalYear
-)
-
-SELECT * FROM source_data
+SELECT DISTINCT
+    c.PayrollID,
+    c.PayrollNumber,
+    c.EmployeeID,
+    c.AgencyID,
+    c.TitleCode,
+    fy.DateID AS DateID,
+    c.BaseSalary,
+    c.RegularHours,
+    c.RegularGrossPaid,
+    c.OTHours,
+    c.TotalOTPaid,
+    c.TotalOtherPay,
+    c.WorkLocationBorough
+FROM cleaned c
+LEFT JOIN fiscal_year_lookup fy
+    ON c.FiscalYear = fy.FiscalYear
 
 {% if is_incremental() %}
     WHERE NOT EXISTS (
         SELECT 1
-        FROM {{ this }}
-        WHERE EmployeeID = source_data.EmployeeID
-        AND AgencyID = source_data.AgencyID
-        AND TitleCode = source_data.TitleCode
-        AND DateID = source_data.DateID
+        FROM {{ this }} AS existing
+        WHERE existing.PayrollID = c.PayrollID
     )
 {% endif %}

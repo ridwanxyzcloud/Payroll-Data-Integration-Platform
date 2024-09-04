@@ -1,16 +1,21 @@
 import subprocess
 import logging
+import os
 
+def dbt_trigger():
+    """
+    Trigger the DBT process for further transformations and loading data into the final warehouse.
+    """
+    # Change directory to where the dbt project is located
+    os.chdir('/opt/airflow/dbt')
 
-logging.info("Data successfully staged.")
+    # Run the dbt command
+    result = subprocess.run(['dbt', 'run', '--profiles-dir', '.'], capture_output=True, text=True)
 
-# Run DBT models to load data to EDW and create aggregate tables
-try:
-    subprocess.run(["dbt", "run"], check=True)
-    logging.info("DBT run completed successfully.")
-except subprocess.CalledProcessError as e:
-    logging.error(f"DBT run failed: {str(e)}")
-
-# Log metrics to Prometheus (pseudo-code, replace with actual Prometheus integration)
-# prom_gauge.set(some_value)
-logging.info("Metrics updated in Prometheus.")
+    # Check if the command was successful
+    if result.returncode != 0:
+        raise Exception(f"dbt command failed: {result.stderr}")
+        logging.error("DBT run failed")
+    else:
+        print(f"dbt command succeeded")
+        logging.info("DBT run successful")

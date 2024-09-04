@@ -1,18 +1,43 @@
-FROM python:3.9-slim
+# Use the official Airflow image with Python 3.9
+FROM apache/airflow:2.9.2-python3.9
 
-RUN pip install --no-cache-dir \
-    apache-airflow==2.1.4 \
-    boto3 \
-    pandas \
-    sqlalchemy \
-    dbt-core \
-    dbt-redshift
+# Switch to root to install system dependencies
+USER root
 
-COPY ./requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY ./airflow/dags /usr/local/airflow/dags
-COPY ./airflow/plugins /usr/local/airflow/plugins
-COPY ./airflow/config /usr/local/airflow/config
+# Switch back to the airflow user before running pip install
+USER airflow
 
-WORKDIR /usr/local/airflow
+# Copy and install Python dependencies
+COPY requirements.txt /requirements.txt
+RUN pip install --no-cache-dir -r /requirements.txt
+
+# Copy dbt project files
+COPY dbt /opt/airflow/dbt
+
+# Set environment variables for dbt
+ENV DBT_PROFILES_DIR=/opt/airflow/dbt
+
+# Copy Airflow configuration and DAGs
+COPY airflow.cfg /opt/airflow/airflow.cfg
+COPY dags /opt/airflow/dags
+
+# Change ownership of the copied files using the numeric user and group IDs
+USER root
+
+# UID:GID
+RUN chown -R 50000:50000 /opt/airflow/
+
+# Switch back to the airflow user
+USER airflow
+
+# Set the entrypoint to the Airflow command
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["airflow", "webserver"]

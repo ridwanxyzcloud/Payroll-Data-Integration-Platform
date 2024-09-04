@@ -1,11 +1,14 @@
+# Airflow and related project dependencies
+apache-airflow==2.9.2
 pandas
+jinja2==3.1.4
 python-dotenv
 boto3
 sqlalchemy
-dbt-redshift
-dbt-core
-boto3
-apache-airflow==2.1.4
-smtplib
 psycopg2-binary
 sqlalchemy-redshift
+prometheus_client
+
+# dbt dependencies
+dbt-core==1.8.6
+dbt-redshift==1.8.1

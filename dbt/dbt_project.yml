@@ -1,7 +1,7 @@
 name: payrolldb
 version: '1.0'
 profile: payrolldb_profile
-source-paths: ["models"]
+model-paths: ["models"]
 target-path: "target"
 clean-targets:
   - "target"
@@ -10,22 +10,22 @@ clean-targets:
 # Define model configurations
 models:
   payrolldb:
-    staging:
-      materialized: view
-      schema: stg
     warehouse:
-      materialized: incremental
-      schema: edw
-      +incremental_strategy: merge
+      +materialized: incremental  # Ensures models use incremental strategy
+      +schema: edw
+      +incremental_strategy: merge  # Defines the merge strategy for incremental models
       # Define unique keys for incremental models
-      dim_employee:
-        +unique_key: EmployeeID
-      dim_agency:
-        +unique_key: AgencyID
-      dim_title:
-        +unique_key: TitleCode
       fact_payroll:
         +unique_key: PayrollID
+      dim_employee:
+        +incremental_strategy: merge
+        +unique_key: EmployeeID
+      dim_agency:
+        +incremental_strategy: merge
+        +unique_key: AgencyID
+      dim_title:
+        +incremental_strategy: merge
+        +unique_key: TitleCode
     marts:
       # Configuration for marts models
       +materialized: incremental
@@ -36,11 +36,3 @@ models:
         +unique_key: (EmployeeID, AgencyID)
       payroll_aggregate_by_agency:
         +unique_key: (AgencyID, FiscalYear)
-
-# Define configurations for seeds
-seeds:
-  quote_columns: True
-
-# Define configurations for tests
-tests:
-  severity: error

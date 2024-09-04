@@ -1,9 +1,8 @@
-from helpers.s3_utils import extract_from_s3, s3_client
-from helpers.metrics import files_extracted
+from helpers.metrics_server import files_extracted
 import logging
 from io import StringIO
+import os
 import pandas as pd
-from helpers.s3_utils import s3_client
 
 
 
@@ -46,26 +45,25 @@ def extract_from_s3(s3_client, bucket, prefix, file_name):
         raise
 
 
-def extract_data(file_name):
+def extract_data(file_name, s3_client, s3_bucket, s3_prefix):
     """
-    Extracts data from an S3 bucket using predefined S3 client, bucket, and prefix.
-
-    This function serves as a wrapper around `extract_from_s3` and uses globally defined
-    `s3_client`, `s3_bucket`, and `s3_prefix`.
+    Extracts data from an S3 bucket using the provided S3 client, bucket, and prefix.
 
     Parameters:
     -----------
     file_name : str
         The name of the file to be extracted from S3.
+    s3_client : boto3.client
+        The boto3 S3 client used to interact with S3.
+    s3_bucket : str
+        The name of the S3 bucket.
+    s3_prefix : str
+        The prefix (folder path) in the S3 bucket where the file is located.
 
     Returns:
     --------
     pd.DataFrame
         A Pandas DataFrame containing the data from the extracted CSV file.
-
-    Raises:
-    -------
-    Exception
-        If the extraction process fails, an exception is logged and re-raised.
     """
     return extract_from_s3(s3_client, s3_bucket, s3_prefix, file_name)
+

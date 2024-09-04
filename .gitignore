@@ -5,3 +5,6 @@ terraform.tfvars
 /.terraform
 .terraform
 profiles.yml
+dbt/profiles.yml
+dbt/logs/dbt.log
+airflow.cfg

@@ -38,12 +38,12 @@ CREATE TABLE edw.dim_date (
 
 -- Create FactPayroll Table
 CREATE TABLE edw.fact_payroll (
-    PayrollID INT PRIMARY KEY DEFAULT nextval('factpayroll_seq'),
+    PayrollID VARCHAR(32) PRIMARY KEY,  -- UUIDs as VARCHAR
+    PayrollNumber INT,
     EmployeeID INT,
     AgencyID INT,
     TitleCode INT,
     DateID INT,
-    PayrollNumber INT,
     PayBasis VARCHAR(50),
     WorkLocationBorough VARCHAR(50),
     RegularHours DECIMAL(10, 2),
@@ -59,7 +59,7 @@ CREATE TABLE edw.fact_payroll (
 );
 
 -- Create payroll_aggregate_by_agency Table
-CREATE TABLE edw.payroll_aggregate_by_agency (
+CREATE TABLE marts.payroll_aggregate_by_agency (
     AgencyID INT,
     AgencyName VARCHAR(100),
     FiscalYear INT,
@@ -70,11 +70,12 @@ CREATE TABLE edw.payroll_aggregate_by_agency (
     TotalOtherPaid DECIMAL(10, 2),
     TotalSupplementalPay DECIMAL(10, 2),
     TotalEmployees INT,
-    PRIMARY KEY (AgencyID, FiscalYear)
+    PRIMARY KEY (AgencyID, FiscalYear),
+    FOREIGN KEY (AgencyID) REFERENCES edw.dim_agency(AgencyID)
 );
 
 -- Create overtime_by_employee_and_agency Table
-CREATE TABLE edw.overtime_by_employee_and_agency (
+CREATE TABLE marts.overtime_by_employee_and_agency (
     EmployeeID INT,
     FirstName VARCHAR(50),
     LastName VARCHAR(50),
@@ -82,5 +83,7 @@ CREATE TABLE edw.overtime_by_employee_and_agency (
     AgencyName VARCHAR(100),
     TotalOTHours DECIMAL(10, 2),
     TotalOTPaid DECIMAL(10, 2),
-    PRIMARY KEY (EmployeeID, AgencyID)
+    PRIMARY KEY (EmployeeID, AgencyID),
+    FOREIGN KEY (EmployeeID) REFERENCES edw.dim_employee(EmployeeID),
+    FOREIGN KEY (AgencyID) REFERENCES edw.dim_agency(AgencyID)
 );
