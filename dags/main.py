@@ -1,5 +1,11 @@
-import pandas as pd
+import sys
 import os
+
+# PYTHONPATH for project directories
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(project_root)
+
+import pandas as pd
 import logging
 from dotenv import load_dotenv
 
@@ -11,24 +17,34 @@ from scripts.extract import extract_data
 from scripts.validate import validate_and_clean_master_data, validate_and_clean_transactional_data
 from helpers.s3_utils import get_s3_client
 from helpers.metrics_server import (
-    start_metrics_server, files_extracted, rows_extracted, rows_transformed, rows_validated, 
-    missing_values_detected, rows_staged, rows_processed, rows_cleaned, data_quality_issues
-)
+    start_metrics_server, master_files_count, transactional_files_count,total_files_count,
+    total_master_rows_extracted, total_transactional_rows_extracted, total_rows_extracted,
+    total_master_rows_validated, total_master_rows_cleaned, missing_master_values_detected,
+    total_transactional_rows_validated, total_transactional_rows_cleaned,missing_transactional_values_detected,
+    data_quality_issues_master, data_quality_issues_transactional, total_rows_transformed,
+    total_master_rows_ingested,total_transactional_rows_ingested,total_rows_ingested,
+    total_master_rows_loaded,total_transactional_rows_loaded,total_rows_loaded)
 from scripts.dbt_trigger import dbt_trigger  # Import the dbt_trigger function
+
+
 
 def load_env_and_setup():
     """
     Load environment variables and setup necessary configurations.
     """
     load_dotenv(override=True)
+
     setup_logging()
+
+    start_metrics_server(port=8001)
+
     global s3_client, engine, s3_bucket, s3_prefix, table_schemas, attributes, master_files, payroll_files
 
     s3_client = get_s3_client()
     engine = redshift_engine()
     
-    s3_bucket = os.getenv("S3_BUCKET")
-    s3_prefix = os.getenv("S3_PREFIX")
+    s3_bucket = os.getenv("s3_bucket")
+    s3_prefix = os.getenv("s3_prefix")
 
     # Validate environment variables
     if not s3_bucket or not s3_prefix:
@@ -54,17 +70,20 @@ def load_env_and_setup():
     master_files = ['EmpMaster.csv', 'TitleMaster.csv', 'AgencyMaster.csv']
     payroll_files = ['nycpayroll_2021.csv','nycpayroll_2020.csv']
 
+    return s3_client, engine, s3_bucket, s3_prefix, table_schemas, attributes, master_files, payroll_files
+
+
 def process_master_data():
     """
     Process and stage master data files.
     """
-    transform_master_data(master_files)
+    transform_master_data(master_files, table_schemas, s3_client, s3_bucket, s3_prefix, engine)
 
 def process_transactional_data():
     """
     Process and stage transactional payroll data files.
     """
-    transform_transactional_data(payroll_files)
+    transform_transactional_data(payroll_files, table_schemas, attributes, s3_client, s3_bucket, s3_prefix, engine)
 
 def main():
     """
@@ -82,7 +101,6 @@ def main():
         
         # Step 4: Trigger DBT for final transformations and loading
         dbt_trigger()
-        
         logging.info("ETL process completed successfully.")
 
     except Exception as e:

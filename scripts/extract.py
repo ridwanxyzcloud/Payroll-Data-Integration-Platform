@@ -1,9 +1,10 @@
-from helpers.metrics_server import files_extracted
 import logging
 from io import StringIO
 import os
 import pandas as pd
-
+from helpers.metrics_server import (total_master_rows_extracted, total_transactional_rows_extracted, 
+                              total_rows_extracted, master_files_count, transactional_files_count, 
+                              total_files_count)
 
 
 def extract_from_s3(s3_client, bucket, prefix, file_name):
@@ -35,9 +36,9 @@ def extract_from_s3(s3_client, bucket, prefix, file_name):
         logging.info(f"Extracting {file_name} from S3")
         obj = s3_client.get_object(Bucket=bucket, Key=prefix + file_name)
         df = pd.read_csv(StringIO(obj['Body'].read().decode('utf-8')))
-
-        # Update metrics
-        files_extracted.inc()  # Increment the count of files extracted
+        
+        total_rows_extracted.inc(len(df))
+        total_files_count.inc()
 
         return df
     except Exception as e:

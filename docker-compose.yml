@@ -8,11 +8,13 @@ services:
     container_name: airflow
     restart: always
     environment:
+      - PYTHONPATH=/opt/airflow/dags:/opt/airflow/helpers:/opt/airflow/scripts 
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
       - DBT_PROFILES_DIR=/opt/airflow/dbt
+      # SMTP email environment variables
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_STARTTLS=${SMTP_STARTTLS}
       - SMTP_SSL=${SMTP_SSL}
@@ -25,12 +27,16 @@ services:
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
       - ./dbt:/opt/airflow/dbt
+      - ./helpers:/opt/airflow/helpers
+      - ./scripts:/opt/airflow/scripts
     ports:
       - "8080:8080"
     depends_on:
       - prometheus
       - grafana
       - etl_monitor
+    networks:
+      - monitoring
 
   prometheus:
     image: prom/prometheus:latest

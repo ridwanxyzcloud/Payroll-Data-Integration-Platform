@@ -2,6 +2,7 @@ import subprocess
 import logging
 import os
 
+
 def dbt_trigger():
     """
     Trigger the DBT process for further transformations and loading data into the final warehouse.
@@ -19,3 +20,4 @@ def dbt_trigger():
     else:
         print(f"dbt command succeeded")
         logging.info("DBT run successful")
+

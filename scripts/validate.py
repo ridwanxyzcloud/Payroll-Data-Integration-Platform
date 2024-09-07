@@ -1,6 +1,6 @@
 import pandas as pd
 import logging
-from helpers.metrics_server import data_quality_issues,rows_validated, rows_transformed,missing_values_detected
+from helpers.metrics_server import (data_quality_issues_master,missing_master_values_detected,missing_transactional_values_detected, data_quality_issues_transactional,total_transactional_rows_cleaned,total_master_rows_validated,total_transactional_rows_validated,total_master_rows_cleaned)
 from helpers.alert_utils import send_urgent_email
 
 
@@ -37,7 +37,7 @@ def validate_and_clean_master_data(df, attributes):
 
     # Record total rows before cleaning
     total_rows = len(df)
-    rows_validated.set(total_rows)  # Set the number of rows being validated
+    total_master_rows_validated.set(total_rows)  
 
     # Ensure only columns in master_columns are present, drop any extra columns
     available_columns = [col for col in attributes if col in df.columns]
@@ -61,12 +61,13 @@ def validate_and_clean_master_data(df, attributes):
         if df[col].duplicated().any():
             duplicated_values = df[col][df[col].duplicated()].tolist()
             logging.error(f"Duplicate values found in {col}: {duplicated_values}")
-            data_quality_issues.inc()
+            data_quality_issues_master.inc()
             df.drop_duplicates(subset=[col], keep='first', inplace=True)
 
     # Check for missing values
     missing = df.isnull().sum()
-    missing_values_detected.set(missing.sum())  # Set the total number of missing values detected
+    total_missing_values = missing.sum()
+    missing_master_values_detected.inc(total_missing_values)  # Set the total number of missing values detected
 
     # Log all changes made to the master data
     logging.info("Master Data Cleaning Summary: " + "; ".join(changes_log))
@@ -75,7 +76,7 @@ def validate_and_clean_master_data(df, attributes):
     df = df.drop_duplicates()
 
     # Record the number of rows after cleaning
-    rows_transformed.set(len(df))  # Set the number of rows transformed
+    total_master_rows_cleaned.set(len(df))
 
     return df
 
@@ -206,19 +207,19 @@ def validate_and_clean_transactional_data(df,attributes):
     df = harmonize_columns(df)
 
     total_rows = len(df)
-    rows_validated.set(total_rows)  # Set the number of rows being validated
+    total_transactional_rows_validated.set(total_rows)  # Set the number of rows being validated
 
     # Ensure all required columns are present and drop any extra columns
     df = df[attributes]
 
     # Check for missing values
     missing = df.isnull().sum()
-    missing_values_detected.set(missing.sum())  # Set the total number of missing values detected
+    total_missing_values = missing.sum()
+    missing_transactional_values_detected.inc(total_missing_values) 
 
     missing_percentage = (missing / total_rows) * 100
 
     changes_log = []
-    rows_before_cleaning = len(df)
 
     # Handling missing values based on percentage
     for col, pct in missing_percentage.items():
@@ -240,7 +241,7 @@ def validate_and_clean_transactional_data(df,attributes):
                 body=f"High percentage of missing values in {col}: {pct}%. Immediate attention required.",
                 to_email="data.engineer@example.com"
             )
-            data_quality_issues.inc()
+            data_quality_issues_transactional.inc()
             raise ValueError(f"High percentage of missing values in {col}: {pct}%")
 
     # Handle anomalies for key columns separately
@@ -320,88 +321,6 @@ def validate_and_clean_transactional_data(df,attributes):
 
     logging.info("Transactional Data Cleaning Summary: " + "; ".join(changes_log))
 
-    rows_transformed.set(len(df))  # Set the number of rows transformed
-
-    return df
-
-def second_dbt_validation(df, required_columns):
-    logging.info("Validating and cleaning master data")
-
-    total_rows = len(df)
-    rows_validated.set(total_rows)  # Set the number of rows being validated
-
-    # Ensure all required columns are present, even if they are empty
-    for col in required_columns:
-        if col not in df.columns:
-            df[col] = None
-            logging.warning(f"Column {col} missing in the data. Added empty column.")
-            data_quality_issues.inc()
-
-    # Initialize changes log
-    changes_log = []
-
-    # Check and validate data types
-    for col in df.columns:
-        if col in ['EmployeeID', 'TitleCode', 'AgencyID']:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-            changes_log.append(f"Converted non-numeric values in {col} to NaN.")
-
-    # Check for duplicates in key columns
-    for col in ['EmployeeID', 'TitleCode', 'AgencyID']:
-        if col in df.columns and df[col].duplicated().any():
-            duplicated_values = df[col][df[col].duplicated()].tolist()
-            logging.error(f"Duplicate values found in {col}: {duplicated_values}")
-            data_quality_issues.inc()
-            df.drop_duplicates(subset=[col], keep='first', inplace=True)
-
-    # Cross-field validation
-    if 'LeaveStatusasofJune30' in df.columns and 'EmployeeID' in df.columns and 'FirstName' in df.columns:
-        inconsistent_rows = df[(df['LeaveStatusasofJune30'] == 'Active') & (df[['EmployeeID', 'FirstName']].isnull().any(axis=1))]
-        if not inconsistent_rows.empty:
-            logging.error(f"Inconsistent data detected in active employee records: {inconsistent_rows}")
-            data_quality_issues.inc()
-
-    # Validation of date ranges
-    if 'AgencyStartDate' in df.columns:
-        future_dates = df[df['AgencyStartDate'] > pd.Timestamp.today()]
-        if not future_dates.empty:
-            logging.error(f"Future dates found in AgencyStartDate: {future_dates}")
-            df.loc[df['AgencyStartDate'] > pd.Timestamp.today(), 'AgencyStartDate'] = pd.NA
-            changes_log.append("Replaced future dates in AgencyStartDate with NaN")
-
-    # Standardize data formats
-    if 'LastName' in df.columns:
-        df['LastName'] = df['LastName'].str.title()
-        changes_log.append("Standardized LastName to title case.")
-
-    if 'LeaveStatusasofJune30' in df.columns:
-        df['LeaveStatusasofJune30'] = df['LeaveStatusasofJune30'].str.upper()
-        changes_log.append("Standardized LeaveStatusasofJune30 to uppercase.")
-
-    # Ensure no rows are dropped, only duplicates are removed
-    df.drop_duplicates(inplace=True)
-
-    # Replace missing values
-    missing = df.isnull().sum()
-    missing_values_detected.set(missing.sum())  # Set the total number of missing values detected
-
-    for col in df.columns:
-        if df[col].dtype == 'object':  # For text-based columns
-            if df[col].isnull().any():
-                df[col].fillna('UNKNOWN', inplace=True)
-                changes_log.append(f"Replaced missing string values in {col} with 'UNKNOWN'")
-        elif df[col].dtype in ['int64', 'float64']:  # For numeric columns
-            if df[col].isnull().any():
-                df[col].fillna(pd.NA, inplace=True)
-                changes_log.append(f"Replaced missing numeric values in {col} with NaN")
-        elif pd.api.types.is_datetime64_any_dtype(df[col]):  # For date columns
-            if df[col].isnull().any():
-                df[col].fillna(pd.NA, inplace=True)
-                changes_log.append(f"Replaced missing date values in {col} with NaN")
-
-    # Log all changes made to the master data
-    logging.info("Master Data Cleaning Summary: " + "; ".join(changes_log))
-
-    rows_transformed.set(len(df))  # Set the number of rows transformed
+    total_transactional_rows_cleaned.inc(len(df))  # Set the number of rows transformed
 
     return df

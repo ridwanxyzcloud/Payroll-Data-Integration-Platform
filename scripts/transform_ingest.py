@@ -1,5 +1,9 @@
 import pandas as pd
 import logging
+from scripts.extract import extract_data
+from scripts.validate import validate_and_clean_master_data, validate_and_clean_transactional_data
+from helpers.db_utils import stage_data
+from helpers.metrics_server import (total_master_rows_extracted, master_files_count, total_rows_ingested, total_master_rows_ingested, total_transactional_rows_ingested, total_transactional_rows_extracted,transactional_files_count)
 
 def ensure_columns(df, columns):
     """
@@ -19,7 +23,7 @@ def ensure_columns(df, columns):
 
 
 
-def transform_master_data(master_files):
+def transform_master_data(master_files, table_schemas, s3_client, s3_bucket, s3_prefix, engine):
     """
     Transform and stage master data from given files into dimension tables.
     
@@ -49,6 +53,8 @@ def transform_master_data(master_files):
                 # Extract data from the file
                 df = extract_data(file_name, s3_client, s3_bucket, s3_prefix)
 
+                total_master_rows_extracted.inc(len(df))
+                master_files_count.inc()
                 # Validate and clean the master data
                 df_cleaned = validate_and_clean_master_data(df, required_columns)
 
@@ -84,26 +90,24 @@ def transform_master_data(master_files):
         stage_data(engine, dim_agency_df, 'dim_agency')
         stage_data(engine, dim_title_df, 'dim_title')
     except Exception as e:
-        logger.error(f"Error staging data: {e}")
+        logging.error(f"Error staging data: {e}")
         return
 
-    total_master_rows = len(dim_employee_df) + len(dim_agency_df) + len(dim_title_df)
+    total_master_rows_staged = len(dim_employee_df) + len(dim_agency_df) + len(dim_title_df)
 
-    # Update Prometheus metrics
-    rows_transformed.set(total_master_rows)
-    rows_staged.set(total_master_rows)
+    # Update metrics for master data
+    total_master_rows_ingested.inc(total_master_rows_staged)
 
     # Log success message with details
     logging.info("Master data successfully transformed and staged.")
     logging.info(f" - dim_employee: {len(dim_employee_df)} rows")
     logging.info(f" - dim_agency: {len(dim_agency_df)} rows")
     logging.info(f" - dim_title: {len(dim_title_df)} rows")
-    logging.info(f"Total master data staged: {total_master_rows} rows")
+    logging.info(f"Total master data staged: {total_master_rows_ingested} rows")
 
 
 
-
-def transform_transactional_data(payroll_files):
+def transform_transactional_data(payroll_files, table_schemas, attributes, s3_client, s3_bucket, s3_prefix, engine):
     """
     Transform and stage transactional data from the given payroll files into dimension and fact tables.
 
@@ -113,6 +117,8 @@ def transform_transactional_data(payroll_files):
     Returns:
         None
     """
+    # 
+    
     # Initialize empty DataFrames with the required columns based on table schemas
     dim_employee_df = pd.DataFrame(columns=table_schemas['dim_employee'])
     dim_agency_df = pd.DataFrame(columns=table_schemas['dim_agency'])
@@ -124,6 +130,9 @@ def transform_transactional_data(payroll_files):
             # Extract data from the transactional files
             df = extract_data(file_name, s3_client, s3_bucket, s3_prefix)
 
+            total_transactional_rows_extracted.inc(len(df))
+            transactional_files_count.inc()
+        
             # Clean and validate the transactional data
             df_cleaned = validate_and_clean_transactional_data(df, attributes)
 
@@ -173,18 +182,17 @@ def transform_transactional_data(payroll_files):
         return
 
     # Calculate total rows staged
-    total_transactional_rows = len(fact_payroll_df)
-    #total_rows = total_master_rows + total_transactional_rows
+    total_transactional_rows_staged = len(fact_payroll_df)
+    #total_rows_staged = total_master_rows_staged + total_transactional_rows_staged
 
     # Update Prometheus metrics
-    rows_transformed.set(len(fact_payroll_df))
-    rows_staged.set(total_transactional_rows)
-
+    total_transactional_rows_ingested.set(total_transactional_rows_staged)
+    
+    #total_rows_ingested.set(total_rows_staged)
+    
     # Log success message with details
     logging.info("Transactional data successfully transformed and staged.")
-    logging.info(f" - fact_payroll: {total_transactional_rows} rows")
-    logging.info(f"Total transactional data staged: {total_transactional_rows} rows")
+    logging.info(f" - fact_payroll: {total_transactional_rows_staged} rows")
+    logging.info(f"Total transactional data staged: {total_transactional_rows_staged} rows")
     logging.info("All data successfully transformed and staged.")
-    #logging.info(f" - Total master data: {total_master_rows} rows")  # Ensure total_master_rows is defined
-    logging.info(f" - Total transactional data: {total_transactional_rows} rows")
-    #logging.info(f"Total data staged: {total_rows} rows")
+    #logging.info(f"Total data staged: {total_rows_staged} rows")

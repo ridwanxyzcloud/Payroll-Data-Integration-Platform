@@ -8,3 +8,4 @@ profiles.yml
 dbt/profiles.yml
 dbt/logs/dbt.log
 airflow.cfg
+/logs
