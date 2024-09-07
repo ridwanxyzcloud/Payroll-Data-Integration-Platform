@@ -8,4 +8,4 @@ scrape_configs:
 
   - job_name: 'metrics_server'
     static_configs:
-      - targets: ['metrics_server:8000']
+      - targets: ['metrics_server:8001']
