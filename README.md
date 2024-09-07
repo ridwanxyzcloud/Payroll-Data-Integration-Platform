@@ -1,6 +1,8 @@
 
 # Payroll Data Integration and Analysis Platform
 
+![payroll-integration-platform-architecture](assets/payroll-integration-platform.jpg)
+
 ## Overview
 
 The Payroll Data Integration and Analysis Platform is designed to streamline payroll data management by integrating data from multiple sources, transforming and cleaning it to ensure accuracy and reliability. The system uses AWS S3 for raw data storage, Amazon Redshift as the data warehouse, and DBT for final transformations and schema validation. Prometheus and Grafana are utilized for monitoring and logging, providing deep insights into the data pipeline and its performance. This platform serves both public and enterprise-level consumers through APIs and secure data warehouse and data marts for reporting.
