@@ -1,6 +1,12 @@
+#import sys
+import os
+
+# PYTHONPATH for project directories
+#project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+#sys.path.append(project_root)
+
 import subprocess
 import logging
-import os
 
 
 def dbt_trigger():
@@ -8,7 +14,7 @@ def dbt_trigger():
     Trigger the DBT process for further transformations and loading data into the final warehouse.
     """
     # Change directory to where the dbt project is located
-    os.chdir('/opt/airflow/dbt')
+    os.chdir('./dbt')
 
     # Run the dbt command
     result = subprocess.run(['dbt', 'run', '--profiles-dir', '.'], capture_output=True, text=True)
@@ -21,3 +27,4 @@ def dbt_trigger():
         print(f"dbt command succeeded")
         logging.info("DBT run successful")
 
+dbt_trigger()

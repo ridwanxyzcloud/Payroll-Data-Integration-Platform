@@ -24,7 +24,7 @@ from helpers.metrics_server import (
     start_metrics_server, files_extracted, rows_extracted, rows_transformed, rows_validated, 
     missing_values_detected, rows_staged, rows_processed, rows_cleaned, data_quality_issues
 )
-from scripts.dbt_trigger import dbt_trigger  # Import the dbt_trigger function
+from scripts.dbt_run import dbt_trigger  # Import the dbt_trigger function
 
 # Define the default_args for the DAG
 default_args = {

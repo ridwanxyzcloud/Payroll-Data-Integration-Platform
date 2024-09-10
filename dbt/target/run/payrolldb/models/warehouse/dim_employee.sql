@@ -11,7 +11,7 @@
     
 
     merge into "payrolldb"."edw_edw"."dim_employee"
-        using "dim_employee__dbt_tmp114139944998" as DBT_INTERNAL_SOURCE
+        using "dim_employee__dbt_tmp192616072739" as DBT_INTERNAL_SOURCE
         on (
                 DBT_INTERNAL_SOURCE.EmployeeID = "payrolldb"."edw_edw"."dim_employee".EmployeeID
             )

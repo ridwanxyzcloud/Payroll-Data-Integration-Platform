@@ -24,7 +24,7 @@ from helpers.metrics_server import (
     data_quality_issues_master, data_quality_issues_transactional, total_rows_transformed,
     total_master_rows_ingested,total_transactional_rows_ingested,total_rows_ingested,
     total_master_rows_loaded,total_transactional_rows_loaded,total_rows_loaded)
-from scripts.dbt_trigger import dbt_trigger  # Import the dbt_trigger function
+from scripts.dbt_run import dbt_trigger
 
 
 
